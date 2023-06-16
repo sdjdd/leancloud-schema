@@ -187,3 +187,28 @@ test('createClass', async () => {
     },
   });
 });
+
+test('updateClassPermissions', async () => {
+  const httpPut = jest.spyOn(http, 'put').mockResolvedValue({});
+  await LC.updateClassPermissions('Test', {
+    add_fields: { roles: [], users: [] },
+    create: { onlySignInUsers: true },
+    delete: { roles: ['admin'], users: [] },
+    update: { '*': true },
+    find: { '*': true },
+    get: { '*': true },
+  });
+  expect(httpPut).toBeCalledWith(
+    `/1.1/data/${LC.appId}/classes/Test/permissions`,
+    {
+      permissions: {
+        add_fields: { roles: [], users: [] },
+        create: { onlySignInUsers: true },
+        delete: { roles: ['admin'], users: [] },
+        update: { '*': true },
+        find: { '*': true },
+        get: { '*': true },
+      },
+    }
+  );
+});
