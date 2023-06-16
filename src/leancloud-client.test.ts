@@ -227,3 +227,28 @@ test('updateClassDefaultACL', async () => {
     }
   );
 });
+
+test('createColumn', async () => {
+  const httpPost = jest.spyOn(http, 'post').mockResolvedValue({});
+  await LC.createColumn({
+    className: 'Test',
+    name: 'deletedAt',
+    type: 'Date',
+    hidden: true,
+    readonly: false,
+    required: false,
+    comment: 'Soft delete',
+  });
+  expect(httpPost).toBeCalledWith(
+    `/1.1/data/${LC.appId}/classes/Test/columns`,
+    {
+      claid: 'Test',
+      column: 'deletedAt',
+      type: 'Date',
+      hidden: true,
+      read_only: false,
+      required: false,
+      comment: 'Soft delete',
+    }
+  );
+});

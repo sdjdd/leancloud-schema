@@ -14,16 +14,6 @@ export interface CreateClassData {
   permissions: ClassSchema['permissions'];
 }
 
-export interface UpdateClassPermissionsData {
-  className: string;
-  permissions: ClassSchema['permissions'];
-}
-
-export interface UpdateClassDefaultAclData {
-  className: string;
-  defaultACL: ClassSchema['defaultACL'];
-}
-
 export interface CreateColumnData {
   className: string;
   name: string;
@@ -139,20 +129,9 @@ export class LeanCloudClient {
   }
 
   async createColumn(data: CreateColumnData) {
-    const req = this._makeCreateColumnRequest(data);
-    await this.client.request(req);
-  }
-
-  async updateColumn(data: UpdateColumnData) {
-    const req = this._makeUpdateColumnRequest(data);
-    await this.client.request(req);
-  }
-
-  _makeCreateColumnRequest(data: CreateColumnData) {
-    const req: AxiosRequestConfig = {
-      method: 'POST',
-      url: `/1.1/data/${this.appId}/classes/${data.className}/columns`,
-      data: {
+    await this.client.post(
+      `/1.1/data/${this.appId}/classes/${data.className}/columns`,
+      {
         claid: data.className,
         column: data.name,
         type: data.type,
@@ -161,9 +140,13 @@ export class LeanCloudClient {
         required: data.required,
         default: data.default,
         comment: data.comment,
-      },
-    };
-    return req;
+      }
+    );
+  }
+
+  async updateColumn(data: UpdateColumnData) {
+    const req = this._makeUpdateColumnRequest(data);
+    await this.client.request(req);
   }
 
   _makeUpdateColumnRequest(data: UpdateColumnData) {
