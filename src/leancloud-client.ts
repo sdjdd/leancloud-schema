@@ -21,7 +21,7 @@ export interface CreateColumnData {
   hidden: boolean;
   readonly: boolean;
   required: boolean;
-  default?: any;
+  default?: string; // JSON
   comment?: string;
   autoIncrement?: boolean; // Number
   incrementValue?: number; // Number
@@ -34,7 +34,7 @@ export interface UpdateColumnData {
   hidden: boolean;
   readonly: boolean;
   required: boolean;
-  default?: any; // nullable
+  default?: string; // JSON, nullable
   comment?: string;
   autoIncrement?: boolean; // Number
   incrementValue?: number; // Number
