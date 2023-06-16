@@ -1,7 +1,7 @@
 export interface ClassSchema {
   name: string;
   type: ClassType;
-  defaultAcl: Record<string, { read?: true; write?: true }>;
+  defaultACL: Record<string, { read?: true; write?: true }>;
   permissions: Record<Action, Permission>;
 }
 

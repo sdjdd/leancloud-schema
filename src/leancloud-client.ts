@@ -11,7 +11,7 @@ export interface ClassListItem {
 export interface CreateClassData {
   name: string;
   type: ClassSchema['type'];
-  defaultAcl: ClassSchema['defaultAcl'];
+  defaultACL: ClassSchema['defaultACL'];
   permissions: ClassSchema['permissions'];
 }
 
@@ -22,7 +22,7 @@ export interface UpdateClassPermissionsData {
 
 export interface UpdateClassDefaultAclData {
   className: string;
-  defaultAcl: ClassSchema['defaultAcl'];
+  defaultACL: ClassSchema['defaultACL'];
 }
 
 export interface CreateColumnData {
@@ -72,7 +72,7 @@ export class LeanCloudClient {
       _id: string;
       name: string;
       'class-type': ClassSchema['type'];
-      at: ClassSchema['defaultAcl'];
+      at: ClassSchema['defaultACL'];
       permissions: ClassSchema['permissions'];
       schema: Record<string, ColumnSchema>;
     }>(`/1.1/data/${this.appId}/classes/${name}`);
@@ -80,7 +80,7 @@ export class LeanCloudClient {
     const classSchema: ClassSchema = {
       name: data.name,
       type: data['class-type'],
-      defaultAcl: data.at,
+      defaultACL: data.at,
       permissions: data.permissions,
     };
 
@@ -119,7 +119,7 @@ export class LeanCloudClient {
       data: {
         class_name: data.name,
         class_type: data.type,
-        acl_template: data.defaultAcl,
+        acl_template: data.defaultACL,
         permissions: data.permissions,
       },
     };
@@ -144,7 +144,7 @@ export class LeanCloudClient {
       data: {
         claid: data.className,
         id: 'ACL',
-        default: JSON.stringify(data.defaultAcl),
+        default: JSON.stringify(data.defaultACL),
       },
     };
     return req;
