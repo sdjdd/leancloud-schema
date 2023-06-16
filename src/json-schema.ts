@@ -92,8 +92,7 @@ const DEFAULT_ZOD_SCHEMAS: Record<ColumnType, ZodSchema> = {
   ACL: zodACL,
 };
 
-export function parseJsonSchema(content: string, className: string) {
-  const rawJson = JSON.parse(content);
+export function parseJsonSchema(rawJson: any, className: string) {
   const json = zodJsonSchema.parse(rawJson);
   const schema: LocalSchema = {
     classSchema: {
