@@ -3,10 +3,8 @@ import { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { ClassSchema, ColumnSchema } from './schema';
 
 export interface ClassListItem {
-  id: string;
   name: string;
   type: ClassSchema['type'];
-  rowCount: number;
 }
 
 export interface CreateClassData {
@@ -53,24 +51,19 @@ export class LeanCloudClient {
   async getClassList() {
     const { data } = await this.client.get<
       {
-        _id: string;
         name: string;
         'class-type': ClassSchema['type'];
-        rows_count: number;
       }[]
     >(`/1.1/data/${this.appId}/classes`);
 
     return data.map<ClassListItem>((item) => ({
-      id: item._id,
       name: item.name,
       type: item['class-type'],
-      rowCount: item.rows_count,
     }));
   }
 
   async getClassInfo(name: string) {
     const { data } = await this.client.get<{
-      _id: string;
       name: string;
       'class-type': ClassSchema['type'];
       permissions: ClassSchema['permissions'];
