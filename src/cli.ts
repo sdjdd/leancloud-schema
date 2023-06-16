@@ -42,7 +42,7 @@ async function push(schemaFiles: string[], options: Record<string, string>) {
       const json = JSON.parse(content);
       schemas.push(parseJsonSchema(json, removeExt(path.name)));
     } catch (e) {
-      console.error(`read ${path.path} failed`);
+      console.error(`read ${path.fullpath()} failed`);
       console.error(e);
       process.exit(1);
     }
@@ -52,7 +52,7 @@ async function push(schemaFiles: string[], options: Record<string, string>) {
   const httpClient = createHttpClient(options.console, accessToken);
   const lcClient = new LeanCloudClient(httpClient, options.app);
 
-  // schemas.forEach((schema) => console.dir(schema, { depth: 10 }));
+  schemas.forEach((schema) => console.dir(schema, { depth: 10 }));
 
   const tasks = await diff(schemas, lcClient);
   console.log(tasks);

@@ -1,5 +1,5 @@
 import { CreateColumnData, LeanCloudClient } from './leancloud-client';
-import { ClassSchema, ColumnSchema } from './schema';
+import { ACL, ClassSchema, ColumnSchema } from './schema';
 
 export type Task = CreateClassTask | CreateColumnTask;
 
@@ -8,14 +8,17 @@ export class CreateClassTask {
 
   constructor(
     private lcClient: LeanCloudClient,
-    readonly classSchema: ClassSchema
+    readonly classSchema: ClassSchema,
+    readonly defaultACL?: ACL
   ) {}
 
   async run() {
     await this.lcClient.createClass({
       name: this.classSchema.name,
       type: this.classSchema.type,
-      defaultACL: this.classSchema.defaultACL,
+      defaultACL: this.defaultACL || {
+        '*': { read: true, write: true },
+      },
       permissions: this.classSchema.permissions,
     });
   }

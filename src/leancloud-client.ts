@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import { AxiosInstance } from 'axios';
-import { ClassSchema, ColumnSchema } from './schema';
+import { ACL, ClassSchema, ColumnSchema } from './schema';
 
 export interface ClassListItem {
   name: string;
@@ -10,7 +10,7 @@ export interface ClassListItem {
 export interface CreateClassData {
   name: string;
   type: ClassSchema['type'];
-  defaultACL: ClassSchema['defaultACL'];
+  defaultACL: ACL;
   permissions: ClassSchema['permissions'];
 }
 
@@ -78,7 +78,6 @@ export class LeanCloudClient {
     const classSchema: ClassSchema = {
       name: data.name,
       type: data['class-type'],
-      defaultACL: data.schema.ACL.default,
       permissions: data.permissions,
     };
 
@@ -119,10 +118,7 @@ export class LeanCloudClient {
     );
   }
 
-  async updateClassDefaultACL(
-    name: string,
-    defaultACL: ClassSchema['defaultACL']
-  ) {
+  async updateClassDefaultACL(name: string, defaultACL: ACL) {
     await this.client.put(
       `/1.1/data/${this.appId}/classes/${name}/columns/ACL`,
       {

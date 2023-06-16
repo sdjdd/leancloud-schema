@@ -6,7 +6,6 @@ export interface LocalSchema {
 export interface ClassSchema {
   name: string;
   type: 'normal' | 'log';
-  defaultACL: ACL;
   permissions: {
     add_fields: Permission;
     create: Permission;
@@ -65,7 +64,7 @@ interface GeoPoint {
   longitude: number;
 }
 
-interface ACL {
+export interface ACL {
   [subject: string]:
     | { read: true }
     | { write: true }

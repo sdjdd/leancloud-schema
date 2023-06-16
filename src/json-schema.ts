@@ -1,23 +1,21 @@
+import _ from 'lodash';
 import { ZodSchema, z } from 'zod';
 import { ColumnSchema, LocalSchema } from './schema';
-import _ from 'lodash';
 
-const zodColumnType = z.enum([
-  'String',
-  'Number',
-  'Boolean',
-  'Date',
-  'File',
-  'Array',
-  'Object',
-  'GeoPoint',
-  'Pointer',
-  'Any',
-  'ACL',
-]);
-
-const zodColumnSchema = z.object({
-  type: zodColumnType,
+const zodColumn = z.object({
+  type: z.enum([
+    'String',
+    'Number',
+    'Boolean',
+    'Date',
+    'File',
+    'Array',
+    'Object',
+    'GeoPoint',
+    'Pointer',
+    'Any',
+    'ACL',
+  ]),
   hidden: z.boolean().optional(),
   read_only: z.boolean().optional(),
   required: z.boolean().optional(),
@@ -42,17 +40,25 @@ const zodPermission = z.union([
   }),
 ]);
 
-const zodACL = z
-  .object({
-    read: z.literal(true),
-    write: z.literal(true),
-  })
-  .refine((obj) => !_.isEmpty(obj), 'ACL cannot be empty');
+const zodACL = z.record(
+  z.union([
+    z.object({
+      read: z.literal(true),
+    }),
+    z.object({
+      write: z.literal(true),
+    }),
+    z.object({
+      read: z.literal(true),
+      write: z.literal(true),
+    }),
+  ])
+);
 
 const zodJsonSchema = z.object({
   name: z.string().optional(),
   type: z.enum(['normal', 'log']).optional(),
-  schema: z.record(zodColumnSchema),
+  schema: z.record(zodColumn),
   permissions: z.object({
     add_fields: zodPermission,
     create: zodPermission,
@@ -63,7 +69,7 @@ const zodJsonSchema = z.object({
   }),
 });
 
-const DEFAULT_ZOD_SCHEMAS: Record<ColumnSchema['type'], ZodSchema> = {
+const ZOD_DEFAULT_SCHEMAS: Record<ColumnSchema['type'], ZodSchema> = {
   String: z.string(),
   Number: z.number(),
   Boolean: z.boolean(),
@@ -94,40 +100,38 @@ const DEFAULT_ZOD_SCHEMAS: Record<ColumnSchema['type'], ZodSchema> = {
 
 export function parseJsonSchema(rawJson: any, className: string) {
   const json = zodJsonSchema.parse(rawJson);
-  const schema: LocalSchema = {
+  const localSchema: LocalSchema = {
     classSchema: {
       name: json.name || className,
       type: json.type || 'normal',
-      defaultACL: {
-        '*': { read: true, write: true },
-      },
       permissions: json.permissions,
     },
     columnSchemas: {},
   };
 
-  Object.entries(json.schema).forEach(([colName, colSchema]) => {
-    schema.columnSchemas[colName] = {
-      name: colName,
-      type: colSchema.type,
-      hidden: colSchema.hidden || false,
-      readonly: colSchema.read_only || false,
-      required: colSchema.required || false,
-      comment: colSchema.comment,
-      autoIncrement: colSchema.auto_increment,
-      incrementValue: colSchema.increment_value,
-      pointerClass: colSchema.class_name,
+  Object.entries(json.schema).forEach(([name, jsonSchema]) => {
+    const columnSchema: ColumnSchema = {
+      name,
+      type: jsonSchema.type,
+      hidden: jsonSchema.hidden || false,
+      readonly: jsonSchema.read_only || false,
+      required: jsonSchema.required || false,
+      comment: jsonSchema.comment,
     };
-    if (colSchema.default !== undefined) {
-      const zodSchema = DEFAULT_ZOD_SCHEMAS[colSchema.type];
-      const parsedDefaultVal = zodSchema.parse(colSchema.default);
-      schema.columnSchemas[colName].default = parsedDefaultVal;
+    if (columnSchema.type === 'Number') {
+      columnSchema.autoIncrement = jsonSchema.auto_increment;
+      columnSchema.incrementValue = jsonSchema.increment_value;
     }
+    if (columnSchema.type === 'Pointer') {
+      columnSchema.pointerClass = jsonSchema.class_name;
+    }
+    if (jsonSchema.default !== undefined) {
+      const zodDefault = ZOD_DEFAULT_SCHEMAS[jsonSchema.type];
+      const parsedDefault = zodDefault.parse(jsonSchema.default);
+      columnSchema.default = parsedDefault;
+    }
+    localSchema.columnSchemas[name] = columnSchema;
   });
 
-  if (schema.columnSchemas.ACL?.default) {
-    schema.classSchema.defaultACL = schema.columnSchemas.ACL.default;
-  }
-
-  return schema;
+  return localSchema;
 }

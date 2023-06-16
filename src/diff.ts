@@ -19,12 +19,13 @@ async function checkMissingClass(
 ) {
   const remoteClassList = await lcClient.getClassList();
   const remoteClassByName = _.keyBy(remoteClassList, (c) => c.name);
-  for (const { classSchema } of localSchemas) {
+  for (const { classSchema, columnSchemas } of localSchemas) {
     const remoteSchema = remoteClassByName[classSchema.name];
     if (remoteSchema) {
       // TODO: check class type conflict
     } else {
-      tasks.push(new CreateClassTask(lcClient, classSchema));
+      const defaultACL = columnSchemas.ACL?.default;
+      tasks.push(new CreateClassTask(lcClient, classSchema, defaultACL));
     }
   }
 }
