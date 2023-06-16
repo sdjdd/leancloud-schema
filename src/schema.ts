@@ -30,6 +30,7 @@ export interface ColumnSchema {
   readonly: boolean;
   required: boolean;
   default?: any;
+  comment?: string;
 }
 
 export type ColumnType =
@@ -42,4 +43,5 @@ export type ColumnType =
   | 'Object'
   | 'GeoPoint'
   | 'Pointer'
-  | 'Any';
+  | 'Any'
+  | 'ACL';
