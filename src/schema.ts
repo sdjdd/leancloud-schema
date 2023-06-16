@@ -1,11 +1,23 @@
+export interface LocalSchema {
+  classSchema: ClassSchema;
+  columnSchemas: Record<string, ColumnSchema>;
+}
+
 export interface ClassSchema {
   name: string;
   type: ClassType;
-  defaultACL: Record<string, { read?: true; write?: true }>;
+  defaultACL: DefaultACL;
   permissions: Record<Action, Permission>;
 }
 
 export type ClassType = 'normal' | 'log';
+
+export type DefaultACL = {
+  [subject: string]:
+    | { read: true }
+    | { write: true }
+    | { read: true; write: true };
+};
 
 export type Action =
   | 'add_fields'
@@ -31,6 +43,9 @@ export interface ColumnSchema {
   required: boolean;
   default?: any;
   comment?: string;
+  autoIncrement?: boolean;
+  incrementValue?: number;
+  pointerClass?: string;
 }
 
 export type ColumnType =
