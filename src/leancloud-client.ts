@@ -23,6 +23,8 @@ export interface CreateColumnData {
   required: boolean;
   default?: any;
   comment?: string;
+  autoIncrement?: boolean; // Number
+  pointerClass?: string; // Pointer
 }
 
 export interface UpdateColumnData {
@@ -140,28 +142,23 @@ export class LeanCloudClient {
         required: data.required,
         default: data.default,
         comment: data.comment,
+        auto_increment: data.autoIncrement,
+        class_name: data.pointerClass,
       }
     );
   }
 
   async updateColumn(data: UpdateColumnData) {
-    const req = this._makeUpdateColumnRequest(data);
-    await this.client.request(req);
-  }
-
-  _makeUpdateColumnRequest(data: UpdateColumnData) {
-    const req: AxiosRequestConfig = {
-      method: 'PUT',
-      url: `/1.1/data/${this.appId}/classes/${data.className}/columns/${data.name}`,
-      data: {
+    await this.client.put(
+      `/1.1/data/${this.appId}/classes/${data.className}/columns/${data.name}`,
+      {
         claid: data.className,
         hidden: data.hidden,
         read_only: data.readonly,
         required: data.required,
         default: data.default,
         comment: data.comment,
-      },
-    };
-    return req;
+      }
+    );
   }
 }

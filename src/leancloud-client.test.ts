@@ -252,3 +252,25 @@ test('createColumn', async () => {
     }
   );
 });
+
+test('updateColumn', async () => {
+  const httpPut = jest.spyOn(http, 'put').mockResolvedValue({});
+  await LC.updateColumn({
+    className: 'Test',
+    name: 'NAME',
+    hidden: true,
+    readonly: true,
+    required: true,
+    comment: 'COMMENT',
+  });
+  expect(httpPut).toBeCalledWith(
+    `/1.1/data/${LC.appId}/classes/Test/columns/NAME`,
+    {
+      claid: 'Test',
+      hidden: true,
+      read_only: true,
+      required: true,
+      comment: 'COMMENT',
+    }
+  );
+});
