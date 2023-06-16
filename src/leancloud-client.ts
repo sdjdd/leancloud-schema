@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { ClassSchema, ColumnSchema } from './schema';
 
@@ -72,19 +73,41 @@ export class LeanCloudClient {
       _id: string;
       name: string;
       'class-type': ClassSchema['type'];
-      at: ClassSchema['defaultACL'];
       permissions: ClassSchema['permissions'];
-      schema: Record<string, ColumnSchema>;
+      schema: Record<
+        string,
+        {
+          type: ColumnSchema['type'];
+          hidden?: boolean;
+          read_only?: boolean;
+          required?: boolean;
+          default?: any;
+          comment?: string;
+        }
+      >;
     }>(`/1.1/data/${this.appId}/classes/${name}`);
 
     const classSchema: ClassSchema = {
       name: data.name,
       type: data['class-type'],
-      defaultACL: data.at,
+      defaultACL: data.schema.ACL.default,
       permissions: data.permissions,
     };
 
-    return { classSchema, columnSchemas: data.schema };
+    const columnSchemas = _.mapValues<typeof data.schema, ColumnSchema>(
+      data.schema,
+      (schema, name) => ({
+        name,
+        type: schema.type,
+        hidden: schema.hidden || false,
+        readonly: schema.read_only || false,
+        required: schema.required || false,
+        default: schema.default,
+        comment: schema.comment,
+      })
+    );
+
+    return { classSchema, columnSchemas };
   }
 
   async createClass(data: CreateClassData) {
