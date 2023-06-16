@@ -212,3 +212,18 @@ test('updateClassPermissions', async () => {
     }
   );
 });
+
+test('updateClassDefaultACL', async () => {
+  const httpPut = jest.spyOn(http, 'put').mockResolvedValue({});
+  await LC.updateClassDefaultACL('Test', {
+    _owner: { read: true, write: true },
+  });
+  expect(httpPut).toBeCalledWith(
+    `/1.1/data/${LC.appId}/classes/Test/columns/ACL`,
+    {
+      claid: 'Test',
+      id: 'ACL',
+      default: '{"_owner":{"read":true,"write":true}}',
+    }
+  );
+});

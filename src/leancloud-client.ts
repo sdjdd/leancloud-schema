@@ -124,9 +124,18 @@ export class LeanCloudClient {
     );
   }
 
-  async updateClassDefaultAcl(data: UpdateClassDefaultAclData) {
-    const req = this._makeUpdateClassDefaultAclRequest(data);
-    await this.client.request(req);
+  async updateClassDefaultACL(
+    name: string,
+    defaultACL: ClassSchema['defaultACL']
+  ) {
+    await this.client.put(
+      `/1.1/data/${this.appId}/classes/${name}/columns/ACL`,
+      {
+        claid: name,
+        id: 'ACL',
+        default: JSON.stringify(defaultACL),
+      }
+    );
   }
 
   async createColumn(data: CreateColumnData) {
@@ -137,19 +146,6 @@ export class LeanCloudClient {
   async updateColumn(data: UpdateColumnData) {
     const req = this._makeUpdateColumnRequest(data);
     await this.client.request(req);
-  }
-
-  _makeUpdateClassDefaultAclRequest(data: UpdateClassDefaultAclData) {
-    const req: AxiosRequestConfig = {
-      method: 'PUT',
-      url: `/1.1/data/${this.appId}/classes/${data.className}/columns/ACL`,
-      data: {
-        claid: data.className,
-        id: 'ACL',
-        default: JSON.stringify(data.defaultACL),
-      },
-    };
-    return req;
   }
 
   _makeCreateColumnRequest(data: CreateColumnData) {
