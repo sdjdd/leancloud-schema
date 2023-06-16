@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import { AxiosInstance, AxiosRequestConfig } from 'axios';
+import { AxiosInstance } from 'axios';
 import { ClassSchema, ColumnSchema } from './schema';
 
 export interface ClassListItem {
@@ -24,6 +24,7 @@ export interface CreateColumnData {
   default?: any;
   comment?: string;
   autoIncrement?: boolean; // Number
+  incrementValue?: number; // Number
   pointerClass?: string; // Pointer
 }
 
@@ -35,6 +36,8 @@ export interface UpdateColumnData {
   required: boolean;
   default?: any; // nullable
   comment?: string;
+  autoIncrement?: boolean; // Number
+  incrementValue?: number; // Number
 }
 
 export class LeanCloudClient {
@@ -143,6 +146,7 @@ export class LeanCloudClient {
         default: data.default,
         comment: data.comment,
         auto_increment: data.autoIncrement,
+        increment_value: data.incrementValue,
         class_name: data.pointerClass,
       }
     );
@@ -158,6 +162,8 @@ export class LeanCloudClient {
         required: data.required,
         default: data.default,
         comment: data.comment,
+        auto_increment: data.autoIncrement,
+        increment_value: data.incrementValue,
       }
     );
   }
