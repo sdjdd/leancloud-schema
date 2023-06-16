@@ -104,8 +104,12 @@ export class LeanCloudClient {
   }
 
   async createClass(data: CreateClassData) {
-    const req = this._makeCreateClassRequest(data);
-    await this.client.request(req);
+    await this.client.post(`/1.1/data/${this.appId}/classes`, {
+      class_name: data.name,
+      class_type: data.type,
+      acl_template: data.defaultACL,
+      permissions: data.permissions,
+    });
   }
 
   async updateClassPermissions(data: UpdateClassPermissionsData) {
@@ -126,20 +130,6 @@ export class LeanCloudClient {
   async updateColumn(data: UpdateColumnData) {
     const req = this._makeUpdateColumnRequest(data);
     await this.client.request(req);
-  }
-
-  _makeCreateClassRequest(data: CreateClassData) {
-    const req: AxiosRequestConfig = {
-      method: 'POST',
-      url: `/1.1/data/${this.appId}/classes`,
-      data: {
-        class_name: data.name,
-        class_type: data.type,
-        acl_template: data.defaultACL,
-        permissions: data.permissions,
-      },
-    };
-    return req;
   }
 
   _makeUpdateClassPermissionsRequest(data: UpdateClassPermissionsData) {

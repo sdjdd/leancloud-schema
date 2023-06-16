@@ -153,7 +153,7 @@ test('getClassInfo', async () => {
 });
 
 test('createClass', async () => {
-  const request = jest.spyOn(http, 'request').mockResolvedValue({});
+  const httpPost = jest.spyOn(http, 'post').mockResolvedValue({});
   await LC.createClass({
     name: 'Test',
     type: 'normal',
@@ -170,9 +170,7 @@ test('createClass', async () => {
       get: { '*': true },
     },
   });
-  expect(request).toBeCalled();
-  expect(request.mock.calls[0][0].method).toBe('POST');
-  expect(request.mock.calls[0][0].data).toStrictEqual({
+  expect(httpPost).toBeCalledWith(`/1.1/data/${LC.appId}/classes`, {
     class_name: 'Test',
     class_type: 'normal',
     acl_template: {
