@@ -1,4 +1,4 @@
-import { LeanCloudClient } from './leancloud-client';
+import { CreateColumnData, LeanCloudClient } from './leancloud-client';
 import { ClassSchema, ColumnSchema } from './schema';
 
 export type Task = CreateClassTask | CreateColumnTask;
@@ -31,7 +31,7 @@ export class CreateColumnTask {
   ) {}
 
   async run() {
-    await this.lcClient.createColumn({
+    const data: CreateColumnData = {
       className: this.className,
       name: this.columnSchema.name,
       type: this.columnSchema.type,
@@ -40,9 +40,15 @@ export class CreateColumnTask {
       required: this.columnSchema.required,
       default: this.columnSchema.default,
       comment: this.columnSchema.comment,
-      autoIncrement: this.columnSchema.autoIncrement,
-      incrementValue: this.columnSchema.incrementValue,
-      pointerClass: this.columnSchema.pointerClass,
-    });
+    };
+
+    if (this.columnSchema.type === 'Number') {
+      data.autoIncrement = this.columnSchema.autoIncrement;
+      data.incrementValue = this.columnSchema.incrementValue;
+    } else if (this.columnSchema.type === 'Pointer') {
+      data.pointerClass = this.columnSchema.pointerClass;
+    }
+
+    await this.lcClient.createColumn(data);
   }
 }

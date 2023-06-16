@@ -5,29 +5,19 @@ export interface LocalSchema {
 
 export interface ClassSchema {
   name: string;
-  type: ClassType;
-  defaultACL: DefaultACL;
-  permissions: Record<Action, Permission>;
+  type: 'normal' | 'log';
+  defaultACL: ACL;
+  permissions: {
+    add_fields: Permission;
+    create: Permission;
+    delete: Permission;
+    update: Permission;
+    find: Permission;
+    get: Permission;
+  };
 }
 
-export type ClassType = 'normal' | 'log';
-
-export type DefaultACL = {
-  [subject: string]:
-    | { read: true }
-    | { write: true }
-    | { read: true; write: true };
-};
-
-export type Action =
-  | 'add_fields'
-  | 'create'
-  | 'delete'
-  | 'update'
-  | 'find'
-  | 'get';
-
-export type Permission =
+type Permission =
   | { '*': true }
   | { onlySignInUsers: true }
   | {
@@ -35,28 +25,49 @@ export type Permission =
       users: string[];
     };
 
-export interface ColumnSchema {
+interface BasicColumnSchema<T extends string = string, D = any> {
   name: string;
-  type: ColumnType;
+  type: T;
   hidden: boolean;
   readonly: boolean;
   required: boolean;
-  default?: any;
   comment?: string;
-  autoIncrement?: boolean;
-  incrementValue?: number;
-  pointerClass?: string;
+  default?: D;
 }
 
-export type ColumnType =
-  | 'String'
-  | 'Number'
-  | 'Boolean'
-  | 'Date'
-  | 'File'
-  | 'Array'
-  | 'Object'
-  | 'GeoPoint'
-  | 'Pointer'
-  | 'Any'
-  | 'ACL';
+export type ColumnSchema =
+  | BasicColumnSchema<'String', number>
+  | (BasicColumnSchema<'Number', number> & {
+      autoIncrement?: boolean;
+      incrementValue?: number;
+    })
+  | BasicColumnSchema<'Boolean', boolean>
+  | BasicColumnSchema<'Date', Date>
+  | BasicColumnSchema<'File', Pointer<'_File'>>
+  | BasicColumnSchema<'Array', any[]>
+  | BasicColumnSchema<'Object', Record<string, any>>
+  | BasicColumnSchema<'GeoPoint', GeoPoint>
+  | (BasicColumnSchema<'Pointer', Pointer> & {
+      pointerClass?: string;
+    })
+  | BasicColumnSchema<'Any', any>
+  | BasicColumnSchema<'ACL', ACL>;
+
+interface Pointer<T extends string = string> {
+  __type: 'Pointer';
+  className: T;
+  objectId: string;
+}
+
+interface GeoPoint {
+  __type: 'GeoPoint';
+  latitude: number;
+  longitude: number;
+}
+
+interface ACL {
+  [subject: string]:
+    | { read: true }
+    | { write: true }
+    | { read: true; write: true };
+}

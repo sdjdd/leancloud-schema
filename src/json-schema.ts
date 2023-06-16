@@ -1,5 +1,5 @@
 import { ZodSchema, z } from 'zod';
-import { ColumnType, LocalSchema } from './schema';
+import { ColumnSchema, LocalSchema } from './schema';
 import _ from 'lodash';
 
 const zodColumnType = z.enum([
@@ -63,7 +63,7 @@ const zodJsonSchema = z.object({
   }),
 });
 
-const DEFAULT_ZOD_SCHEMAS: Record<ColumnType, ZodSchema> = {
+const DEFAULT_ZOD_SCHEMAS: Record<ColumnSchema['type'], ZodSchema> = {
   String: z.string(),
   Number: z.number(),
   Boolean: z.boolean(),
