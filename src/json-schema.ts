@@ -101,7 +101,7 @@ const zodAnyColumn = zodBasicColumn.extend({
 
 const zodACLColumn = zodBasicColumn.extend({
   type: z.literal('ACL'),
-  default: zodACL.optional(),
+  default: zodACL,
 });
 
 const zodColumn = z.discriminatedUnion('type', [
