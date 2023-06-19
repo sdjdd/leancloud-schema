@@ -5,7 +5,8 @@
   "description": "Manage LeanCloud storage class schemas.",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": ["leancloud"],
   "author": "sdjdd (https://github.com/sdjdd)",
