@@ -71,6 +71,8 @@ export class LeanCloudClient {
           required?: boolean;
           default?: any;
           comment?: string;
+          auto_increment?: boolean;
+          className?: string;
         }
       >;
     }>(`/1.1/data/${this.appId}/classes/${name}`);
@@ -83,15 +85,19 @@ export class LeanCloudClient {
 
     const columnSchemas = _.mapValues<typeof data.schema, ColumnSchema>(
       data.schema,
-      (schema, name) => ({
-        name,
-        type: schema.type,
-        hidden: schema.hidden || false,
-        readonly: schema.read_only || false,
-        required: schema.required || false,
-        default: schema.default,
-        comment: schema.comment,
-      })
+      (schema, name) => {
+        return {
+          name,
+          type: schema.type,
+          hidden: schema.hidden || false,
+          readonly: schema.read_only || false,
+          required: schema.required || false,
+          default: schema.default,
+          comment: schema.comment,
+          autoIncrement: schema.auto_increment,
+          pointerClass: schema.className,
+        };
+      }
     );
 
     return { classSchema, columnSchemas };
