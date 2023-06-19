@@ -47,9 +47,8 @@ export class CreateColumnTask {
 
     if (this.columnSchema.type === 'Number') {
       data.autoIncrement = this.columnSchema.autoIncrement;
-      data.incrementValue = this.columnSchema.incrementValue;
     } else if (this.columnSchema.type === 'Pointer') {
-      data.pointerClass = this.columnSchema.pointerClass;
+      data.pointerClass = this.columnSchema.className;
     }
 
     await this.lcClient.createColumn(data);

@@ -1,12 +1,22 @@
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import { program } from 'commander';
 import { glob } from 'glob';
 import { create as createAxiosInstance } from 'axios';
 import 'dotenv/config';
 import { LocalSchema } from './schema';
-import { parseJsonSchema } from './json-schema';
+import { encode, parseJsonSchema } from './json-schema';
 import { LeanCloudClient } from './leancloud-client';
 import { diff } from './diff';
+
+program
+  .command('pull')
+  .argument('[class_names...]')
+  .requiredOption('--console <string>', 'leancloud console url')
+  .requiredOption('--app <string>', 'app id')
+  .requiredOption('--dir <string>', 'output directory')
+  .option('--token <string>', 'access token')
+  .action(pull);
 
 program
   .command('push')
@@ -18,6 +28,38 @@ program
   .action(push);
 
 program.parse();
+
+async function pull(classNames: string[], options: any) {
+  const accessToken = options.token || process.env.LEANCLOUD_ACCESS_TOKEN;
+  if (!accessToken) {
+    exit('no access token provided');
+  }
+
+  const httpClient = createHttpClient(options.console, accessToken);
+  const lcClient = new LeanCloudClient(httpClient, options.app);
+
+  if (classNames.length === 0) {
+    const classList = await lcClient.getClassList();
+    classNames = classList.map((item) => item.name);
+  }
+
+  const localSchemas: LocalSchema[] = [];
+
+  for (const className of classNames) {
+    const localSchema = await lcClient.getClassInfo(className);
+    localSchemas.push(localSchema);
+  }
+
+  for (const localSchema of localSchemas) {
+    const json = await encode(localSchema);
+    const content = JSON.stringify(json, null, '  ');
+    const filePath = path.resolve(
+      options.dir,
+      `${localSchema.classSchema.name}.json`
+    );
+    await fs.writeFile(filePath, content);
+  }
+}
 
 async function push(schemaFiles: string[], options: Record<string, string>) {
   const accessToken = options.token || process.env.LEANCLOUD_ACCESS_TOKEN;

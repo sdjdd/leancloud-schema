@@ -24,33 +24,91 @@ type Permission =
       users: string[];
     };
 
-interface BasicColumnSchema<T extends string = string, D = any> {
+interface BasicColumnSchema {
   name: string;
-  type: T;
+  type: string;
   hidden: boolean;
   readonly: boolean;
   required: boolean;
   comment?: string;
-  default?: D;
+  default?: any;
+}
+
+interface StringColumnSchema extends BasicColumnSchema {
+  type: 'String';
+  default?: string;
+}
+
+interface NumberColumnSchema extends BasicColumnSchema {
+  type: 'Number';
+  default?: number;
+  autoIncrement?: boolean;
+}
+
+interface BooleanColumnSchema extends BasicColumnSchema {
+  type: 'Boolean';
+  default?: boolean;
+}
+
+interface DateColumnSchema extends BasicColumnSchema {
+  type: 'Date';
+  default?: LCDate;
+}
+
+interface FileColumnSchema extends BasicColumnSchema {
+  type: 'File';
+  default?: Pointer<'_File'>;
+}
+
+interface ArrayColumnSchema extends BasicColumnSchema {
+  type: 'Array';
+  default?: any[];
+}
+
+interface ObjectColumnSchema extends BasicColumnSchema {
+  type: 'Object';
+  default?: Record<string, any>;
+}
+
+interface GeoPointColumnSchema extends BasicColumnSchema {
+  type: 'GeoPoint';
+  default?: GeoPoint;
+}
+
+interface PointerColumnSchema<T extends string = string>
+  extends BasicColumnSchema {
+  type: 'Pointer';
+  default?: Pointer<T>;
+  className?: T;
+}
+
+interface AnyColumnSchema extends BasicColumnSchema {
+  type: 'Any';
+  default?: any;
+}
+
+interface ACLColumnSchema extends BasicColumnSchema {
+  type: 'ACL';
+  defalut?: ACL;
 }
 
 export type ColumnSchema =
-  | BasicColumnSchema<'String', number>
-  | (BasicColumnSchema<'Number', number> & {
-      autoIncrement?: boolean;
-      incrementValue?: number;
-    })
-  | BasicColumnSchema<'Boolean', boolean>
-  | BasicColumnSchema<'Date', Date>
-  | BasicColumnSchema<'File', Pointer<'_File'>>
-  | BasicColumnSchema<'Array', any[]>
-  | BasicColumnSchema<'Object', Record<string, any>>
-  | BasicColumnSchema<'GeoPoint', GeoPoint>
-  | (BasicColumnSchema<'Pointer', Pointer> & {
-      pointerClass?: string;
-    })
-  | BasicColumnSchema<'Any', any>
-  | BasicColumnSchema<'ACL', ACL>;
+  | StringColumnSchema
+  | NumberColumnSchema
+  | BooleanColumnSchema
+  | DateColumnSchema
+  | FileColumnSchema
+  | ArrayColumnSchema
+  | ObjectColumnSchema
+  | GeoPointColumnSchema
+  | PointerColumnSchema
+  | AnyColumnSchema
+  | ACLColumnSchema;
+
+interface LCDate {
+  __type: 'Date';
+  iso: string;
+}
 
 interface Pointer<T extends string = string> {
   __type: 'Pointer';

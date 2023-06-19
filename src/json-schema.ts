@@ -22,8 +22,7 @@ const zodColumn = z.object({
   default: z.any().optional(),
   comment: z.string().optional(),
   auto_increment: z.boolean().optional(),
-  increment_value: z.number().positive().optional(),
-  class_name: z.string().optional(),
+  className: z.string().optional(),
 });
 
 // from strict to loose
@@ -120,10 +119,9 @@ export function parseJsonSchema(rawJson: any, className: string) {
     };
     if (columnSchema.type === 'Number') {
       columnSchema.autoIncrement = jsonSchema.auto_increment;
-      columnSchema.incrementValue = jsonSchema.increment_value;
     }
     if (columnSchema.type === 'Pointer') {
-      columnSchema.pointerClass = jsonSchema.class_name;
+      columnSchema.className = jsonSchema.className;
     }
     if (jsonSchema.default !== undefined) {
       const zodDefault = ZOD_DEFAULT_SCHEMAS[jsonSchema.type];
@@ -134,4 +132,49 @@ export function parseJsonSchema(rawJson: any, className: string) {
   });
 
   return localSchema;
+}
+
+export async function encode(schema: LocalSchema) {
+  const result = {
+    type: schema.classSchema.type,
+    schema: {} as any,
+    permissions: {} as any,
+  };
+
+  const setSchema = (schema: ColumnSchema) => {
+    const json: any = {
+      type: schema.type,
+      hidden: schema.hidden || undefined,
+      read_only: schema.readonly || undefined,
+      comment: schema.comment || undefined,
+      default: schema.default,
+    };
+    if (schema.type === 'Number') {
+      json.auto_increment = schema.autoIncrement || undefined;
+    } else if (schema.type === 'Pointer') {
+      json.className = schema.className;
+    }
+    result.schema[schema.name] = json;
+  };
+
+  const { objectId, ACL, createdAt, updatedAt, ...columnSchemas } =
+    schema.columnSchemas;
+
+  const columns = Object.values(columnSchemas).sort((a, b) =>
+    a.name > b.name ? 1 : -1
+  );
+
+  setSchema(objectId);
+  setSchema(ACL);
+  columns.forEach(setSchema);
+  setSchema(createdAt);
+  setSchema(updatedAt);
+
+  (
+    ['add_fields', 'create', 'delete', 'update', 'find', 'get'] as const
+  ).forEach((action) => {
+    result.permissions[action] = schema.classSchema.permissions[action];
+  });
+
+  return result;
 }

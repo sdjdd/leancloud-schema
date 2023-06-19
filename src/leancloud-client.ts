@@ -61,6 +61,7 @@ export class LeanCloudClient {
     const { data } = await this.client.get<{
       name: string;
       'class-type': ClassSchema['type'];
+      at: ACL;
       permissions: ClassSchema['permissions'];
       schema: Record<
         string,
@@ -85,20 +86,22 @@ export class LeanCloudClient {
 
     const columnSchemas = _.mapValues<typeof data.schema, ColumnSchema>(
       data.schema,
-      (schema, name) => {
-        return {
-          name,
-          type: schema.type,
-          hidden: schema.hidden || false,
-          readonly: schema.read_only || false,
-          required: schema.required || false,
-          default: schema.default,
-          comment: schema.comment,
-          autoIncrement: schema.auto_increment,
-          pointerClass: schema.className,
-        };
-      }
+      (schema, name) => ({
+        name,
+        type: schema.type,
+        hidden: schema.hidden || false,
+        readonly: schema.read_only || false,
+        required: schema.required || false,
+        default: schema.default,
+        comment: schema.comment,
+        autoIncrement: schema.auto_increment,
+        className: schema.className,
+      })
     );
+
+    if (columnSchemas.ACL && !columnSchemas.ACL.default) {
+      columnSchemas.ACL.default = data.at;
+    }
 
     return { classSchema, columnSchemas };
   }
