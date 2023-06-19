@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import { AxiosInstance } from 'axios';
-import { ACL, ClassSchema, ColumnSchema } from './schema';
+import { ACL, BasicColumnSchema, ClassSchema, ColumnSchema } from './schema';
 
 export interface ClassListItem {
   name: string;
@@ -34,7 +34,7 @@ export interface UpdateColumnData {
   hidden: boolean;
   readonly: boolean;
   required: boolean;
-  default?: string; // JSON, nullable
+  default?: string | null; // JSON string
   comment?: string;
   autoIncrement?: boolean; // Number
   incrementValue?: number; // Number
@@ -86,20 +86,39 @@ export class LeanCloudClient {
 
     const columnSchemas = _.mapValues<typeof data.schema, ColumnSchema>(
       data.schema,
-      (schema, name) => ({
-        name,
-        type: schema.type,
-        hidden: schema.hidden || false,
-        readonly: schema.read_only || false,
-        required: schema.required || false,
-        default: schema.default,
-        comment: schema.comment,
-        autoIncrement: schema.auto_increment,
-        className: schema.className,
-      })
+      (schema, name) => {
+        const basicColumnSchema: BasicColumnSchema = {
+          name,
+          type: schema.type,
+          hidden: schema.hidden || false,
+          readonly: schema.read_only || false,
+          required: schema.required || false,
+          default: schema.default,
+          comment: schema.comment || '',
+        };
+        switch (schema.type) {
+          case 'Number':
+            return {
+              ...basicColumnSchema,
+              type: schema.type,
+              autoIncrement: schema.auto_increment || false,
+            };
+          case 'Pointer':
+            return {
+              ...basicColumnSchema,
+              type: schema.type,
+              className: schema.className!,
+            };
+          default:
+            return {
+              ...basicColumnSchema,
+              type: schema.type,
+            };
+        }
+      }
     );
 
-    if (columnSchemas.ACL && !columnSchemas.ACL.default) {
+    if (columnSchemas.ACL && !columnSchemas.ACL.default && data.at) {
       columnSchemas.ACL.default = data.at;
     }
 

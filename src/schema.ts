@@ -24,13 +24,13 @@ type Permission =
       users: string[];
     };
 
-interface BasicColumnSchema {
+export interface BasicColumnSchema {
   name: string;
   type: string;
   hidden: boolean;
   readonly: boolean;
   required: boolean;
-  comment?: string;
+  comment: string;
   default?: any;
 }
 
@@ -42,7 +42,7 @@ interface StringColumnSchema extends BasicColumnSchema {
 interface NumberColumnSchema extends BasicColumnSchema {
   type: 'Number';
   default?: number;
-  autoIncrement?: boolean;
+  autoIncrement: boolean;
 }
 
 interface BooleanColumnSchema extends BasicColumnSchema {
@@ -79,7 +79,7 @@ interface PointerColumnSchema<T extends string = string>
   extends BasicColumnSchema {
   type: 'Pointer';
   default?: Pointer<T>;
-  className?: T;
+  className: T;
 }
 
 interface AnyColumnSchema extends BasicColumnSchema {

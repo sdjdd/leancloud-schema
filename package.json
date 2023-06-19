@@ -6,7 +6,10 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "compile": "tsc -p tsconfig.build.json",
+    "build": "npm run clean && npm run compile"
   },
   "keywords": ["leancloud"],
   "author": "sdjdd (https://github.com/sdjdd)",

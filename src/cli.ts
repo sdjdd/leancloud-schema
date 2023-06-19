@@ -2,41 +2,64 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { program } from 'commander';
 import { glob } from 'glob';
-import { create as createAxiosInstance } from 'axios';
+import axios from 'axios';
 import 'dotenv/config';
 import { LocalSchema } from './schema';
 import { encode, parseJsonSchema } from './json-schema';
 import { LeanCloudClient } from './leancloud-client';
-import { diff } from './diff';
+import { Diff } from './diff';
+
+program
+  .option('--console <string>', 'leancloud console url')
+  .option('--app <string>', 'app id')
+  .option('--token <string>', 'access token');
 
 program
   .command('pull')
   .argument('[class_names...]')
-  .requiredOption('--console <string>', 'leancloud console url')
-  .requiredOption('--app <string>', 'app id')
   .requiredOption('--dir <string>', 'output directory')
-  .option('--token <string>', 'access token')
   .action(pull);
 
 program
   .command('push')
   .argument('<schema_files...>', 'schema files')
-  .requiredOption('--console <string>', 'leancloud console url')
-  .requiredOption('--app <string>', 'app id')
-  .option('--token <string>', 'access token')
   .option('--dry-run')
   .action(push);
 
 program.parse();
 
-async function pull(classNames: string[], options: any) {
-  const accessToken = options.token || process.env.LEANCLOUD_ACCESS_TOKEN;
+interface ProgramOptions {
+  consoleUrl: string;
+  appId: string;
+  accessToken: string;
+}
+
+function getProgramOptions(): ProgramOptions {
+  const options = program.optsWithGlobals();
+  const { LEANCLOUD_CONSOLE_URL, LEANCLOUD_APP_ID, LEANCLOUD_ACCESS_TOKEN } =
+    process.env;
+
+  const consoleUrl = options.console || LEANCLOUD_CONSOLE_URL;
+  if (!consoleUrl) {
+    exit('no console url provided');
+  }
+  const appId = options.app || LEANCLOUD_APP_ID;
+  if (!consoleUrl) {
+    exit('no app id provided');
+  }
+  const accessToken = options.token || LEANCLOUD_ACCESS_TOKEN;
   if (!accessToken) {
     exit('no access token provided');
   }
 
-  const httpClient = createHttpClient(options.console, accessToken);
-  const lcClient = new LeanCloudClient(httpClient, options.app);
+  return { consoleUrl, appId, accessToken };
+}
+
+async function pull(classNames: string[], options: any) {
+  const { consoleUrl, appId, accessToken } = getProgramOptions();
+
+  const httpClient = createHttpClient(consoleUrl, accessToken);
+  const lcClient = new LeanCloudClient(httpClient, appId);
 
   if (classNames.length === 0) {
     const classList = await lcClient.getClassList();
@@ -61,11 +84,8 @@ async function pull(classNames: string[], options: any) {
   }
 }
 
-async function push(schemaFiles: string[], options: Record<string, string>) {
-  const accessToken = options.token || process.env.LEANCLOUD_ACCESS_TOKEN;
-  if (!accessToken) {
-    exit('no access token provided');
-  }
+async function push(schemaFiles: string[], options: any) {
+  const { consoleUrl, appId, accessToken } = getProgramOptions();
 
   const paths = await glob(schemaFiles, {
     nodir: true,
@@ -89,15 +109,33 @@ async function push(schemaFiles: string[], options: Record<string, string>) {
       process.exit(1);
     }
   }
+  schemas.sort((a, b) => (a.classSchema.name > b.classSchema.name ? 1 : -1));
 
-  // TODO: validate url
-  const httpClient = createHttpClient(options.console, accessToken);
-  const lcClient = new LeanCloudClient(httpClient, options.app);
+  const httpClient = createHttpClient(consoleUrl, accessToken);
+  const lcClient = new LeanCloudClient(httpClient, appId);
+  const diff = new Diff(lcClient, schemas);
 
-  schemas.forEach((schema) => console.dir(schema, { depth: 10 }));
+  const { tasks, conflicts } = await diff.do();
 
-  const tasks = await diff(schemas, lcClient);
-  console.log(tasks);
+  if (conflicts.length) {
+    console.error('has conflicts:');
+    conflicts.forEach((conflict) => console.log(conflict));
+    process.exit(1);
+  }
+
+  for (const task of tasks) {
+    console.dir(task.describe(), { depth: 5 });
+    if (!options.dryRun) {
+      try {
+        await task.run(lcClient);
+      } catch (e) {
+        if (axios.isAxiosError(e)) {
+          console.error(e.response?.data);
+          exit('something went wrong');
+        }
+      }
+    }
+  }
 }
 
 function exit(message: string, code = 1): never {
@@ -114,7 +152,7 @@ function removeExt(name: string) {
 }
 
 export function createHttpClient(consoleUrl: string, accessToken: string) {
-  return createAxiosInstance({
+  return axios.create({
     baseURL: consoleUrl,
     headers: {
       Authorization: `Token ${accessToken}`,
