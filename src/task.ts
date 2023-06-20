@@ -1,9 +1,6 @@
-import {
-  CreateColumnData,
-  LeanCloudClient,
-  UpdateColumnData,
-} from './leancloud-client';
-import { ACL, ClassSchema, Column } from './schema';
+import { LeanCloudClient } from './leancloud-client';
+import { ClassSchema, ColumnSchema } from './loose-schema';
+import { ACL } from './type';
 
 export type Task =
   | CreateClassTask
@@ -13,31 +10,27 @@ export type Task =
   | UpdateColumnTask;
 
 export class CreateClassTask {
-  constructor(
-    readonly classSchema: ClassSchema,
-    readonly defaultACL: ACL = { '*': { read: true, write: true } }
-  ) {}
+  constructor(readonly classSchema: ClassSchema) {}
 
   describe() {
     return {
       task: 'Create class',
-      classSchema: this.classSchema,
-      defaultACL: this.defaultACL,
+      class: {
+        name: this.classSchema.name,
+        type: this.classSchema.type,
+        permissions: this.classSchema.permissions,
+        defaultACL: this.classSchema.schema.ACL?.default,
+      },
     };
   }
 
   async run(lcClient: LeanCloudClient) {
-    await lcClient.createClass({
-      name: this.classSchema.name,
-      type: this.classSchema.type,
-      defaultACL: this.defaultACL,
-      permissions: this.classSchema.permissions,
-    });
+    await lcClient.createClass(this.classSchema);
   }
 }
 
 export class CreateColumnTask {
-  constructor(readonly className: string, readonly column: Column) {}
+  constructor(readonly className: string, readonly column: ColumnSchema) {}
 
   describe() {
     return {
@@ -48,37 +41,7 @@ export class CreateColumnTask {
   }
 
   async run(lcClient: LeanCloudClient) {
-    const { className, column } = this;
-
-    const data: CreateColumnData = {
-      name: column.name,
-      type: column.type,
-      hidden: column.hidden,
-      readonly: column.readonly,
-      required: column.required,
-      comment: column.comment,
-    };
-
-    switch (column.type) {
-      case 'Number':
-        if (column.autoIncrement) {
-          data.autoIncrement = column.autoIncrement;
-        }
-        break;
-      case 'Pointer':
-        data.className = column.className;
-        break;
-    }
-
-    if (column.default) {
-      if (column.type === 'Date') {
-        data.default = column.default.iso;
-      } else {
-        data.default = JSON.stringify(column.default);
-      }
-    }
-
-    await lcClient.createColumn(className, data);
+    await lcClient.createColumn(this.className, this.column);
   }
 }
 
@@ -118,38 +81,17 @@ export class UpdateDefaultACLTask {
 }
 
 export class UpdateColumnTask {
-  constructor(readonly className: string, readonly columnSchema: Column) {}
+  constructor(readonly className: string, readonly column: ColumnSchema) {}
 
   describe() {
     return {
       task: 'Update column',
       className: this.className,
-      columnSchema: this.columnSchema,
+      column: this.column,
     };
   }
 
   async run(lcClient: LeanCloudClient) {
-    const { columnSchema } = this;
-
-    const data: UpdateColumnData = {
-      hidden: this.columnSchema.hidden,
-      readonly: this.columnSchema.readonly,
-      required: this.columnSchema.required,
-      comment: this.columnSchema.comment,
-    };
-
-    if (columnSchema.default) {
-      if (columnSchema.type === 'Date') {
-        data.default = columnSchema.default.iso;
-      } else if (columnSchema.type === 'String') {
-        data.default = columnSchema.default;
-      } else {
-        data.default = JSON.stringify(columnSchema.default);
-      }
-    } else {
-      data.default = null;
-    }
-
-    await lcClient.updateColumn(this.className, columnSchema.name, data);
+    await lcClient.updateColumn(this.className, this.column);
   }
 }

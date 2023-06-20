@@ -1,44 +1,11 @@
 import _ from 'lodash';
 import { AxiosInstance } from 'axios';
-import {
-  ACL,
-  BasicColumn,
-  ClassSchema,
-  Column,
-  NumberColumn,
-  PointerColumn,
-} from './schema';
+import { ClassSchema, ColumnSchema, Permission } from './loose-schema';
+import { ACL } from './type';
 
 export interface ClassListItem {
   name: string;
   type: ClassSchema['type'];
-}
-
-export interface CreateClassData {
-  name: string;
-  type: ClassSchema['type'];
-  defaultACL: ACL;
-  permissions: ClassSchema['permissions'];
-}
-
-export interface CreateColumnData {
-  name: string;
-  type: Column['type'];
-  hidden: boolean;
-  readonly: boolean;
-  required: boolean;
-  default?: string; // JSON
-  comment?: string;
-  autoIncrement?: boolean; // Number
-  className?: string; // Pointer
-}
-
-export interface UpdateColumnData {
-  hidden: boolean;
-  readonly: boolean;
-  required: boolean;
-  default?: string | null; // JSON string
-  comment?: string;
 }
 
 export class LeanCloudClient {
@@ -58,15 +25,16 @@ export class LeanCloudClient {
     }));
   }
 
-  async getClassInfo(name: string) {
+  async getClassSchema(name: string) {
     const { data } = await this.client.get<{
       name: string;
-      'class-type': ClassSchema['type'];
+      'class-type': string;
       at: ACL;
-      permissions: ClassSchema['permissions'];
-      schema: Record<
-        string,
-        {
+      permissions: {
+        [action: string]: Permission;
+      };
+      schema: {
+        [column: string]: {
           type: string;
           hidden?: boolean;
           read_only?: boolean;
@@ -75,53 +43,32 @@ export class LeanCloudClient {
           comment?: string;
           auto_increment?: boolean;
           className?: string;
-        }
-      >;
+          user_private?: boolean;
+        };
+      };
     }>(`/1.1/data/${this.appId}/classes/${name}`);
+
+    const schema = _.mapValues(data.schema, (s, name) => ({ ...s, name }));
+
+    if (schema.ACL && !schema.ACL.default && data.at) {
+      schema.ACL.default = data.at;
+    }
 
     const classSchema: ClassSchema = {
       name: data.name,
       type: data['class-type'],
+      schema: schema,
       permissions: data.permissions,
     };
 
-    const columns = _.mapValues<typeof data.schema, Column>(
-      data.schema,
-      (schema, name) => {
-        const column: BasicColumn = {
-          name,
-          type: schema.type,
-          hidden: schema.hidden || false,
-          readonly: schema.read_only || false,
-          required: schema.required || false,
-          default: schema.default,
-          comment: schema.comment || '',
-        };
-
-        if (schema.type === 'Number') {
-          (column as NumberColumn).autoIncrement =
-            schema.auto_increment || false;
-        }
-        if (schema.type === 'Pointer') {
-          (column as PointerColumn).className = schema.className!;
-        }
-
-        return column as Column;
-      }
-    );
-
-    if (columns.ACL && !columns.ACL.default && data.at) {
-      columns.ACL.default = data.at;
-    }
-
-    return { classSchema, columns };
+    return classSchema;
   }
 
-  async createClass(data: CreateClassData) {
+  async createClass(data: ClassSchema) {
     await this.client.post(`/1.1/data/${this.appId}/classes`, {
       class_name: data.name,
       class_type: data.type,
-      acl_template: data.defaultACL,
+      acl_template: data.schema.ACL?.default,
       permissions: data.permissions,
     });
   }
@@ -149,37 +96,54 @@ export class LeanCloudClient {
     );
   }
 
-  async createColumn(className: string, data: CreateColumnData) {
-    await this.client.post(`/1.1/data/${this.appId}/classes/${data}/columns`, {
-      claid: className,
-      column: data.name,
-      type: data.type,
-      hidden: data.hidden,
-      read_only: data.readonly,
-      required: data.required,
-      default: data.default,
-      comment: data.comment,
-      auto_increment: data.autoIncrement,
-      incrementValue: data.autoIncrement ? 1 : undefined,
-      class_name: data.className,
-    });
-  }
-
-  async updateColumn(
-    className: string,
-    column: string,
-    data: UpdateColumnData
-  ) {
-    await this.client.put(
-      `/1.1/data/${this.appId}/classes/${className}/columns/${column}`,
+  async createColumn(className: string, data: ColumnSchema) {
+    await this.client.post(
+      `/1.1/data/${this.appId}/classes/${className}/columns`,
       {
         claid: className,
+        column: data.name,
+        type: data.type,
         hidden: data.hidden,
-        read_only: data.readonly,
+        read_only: data.read_only,
         required: data.required,
         default: data.default,
         comment: data.comment,
+        auto_increment: data.auto_increment,
+        incrementValue: data.auto_increment ? 1 : undefined,
+        class_name: data.className,
+        user_private: data.user_private,
       }
     );
+  }
+
+  async updateColumn(className: string, data: ColumnSchema) {
+    const defaultValue = encodeDefaultValue(data);
+
+    await this.client.put(
+      `/1.1/data/${this.appId}/classes/${className}/columns/${data.name}`,
+      {
+        claid: className,
+        hidden: data.hidden ?? false,
+        read_only: data.read_only ?? false,
+        required: data.required ?? false,
+        comment: data.comment ?? '',
+        default: defaultValue ?? null,
+        user_private: data.user_private ?? false,
+      }
+    );
+  }
+}
+
+function encodeDefaultValue(column: ColumnSchema) {
+  if (column.default === undefined) {
+    return;
+  }
+  switch (column.type) {
+    case 'String':
+      return column.default;
+    case 'Date':
+      return column.default.iso;
+    default:
+      return JSON.stringify(column.default);
   }
 }

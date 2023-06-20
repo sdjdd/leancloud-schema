@@ -4,10 +4,11 @@ import { program } from 'commander';
 import { glob } from 'glob';
 import axios from 'axios';
 import 'dotenv/config';
-import { LocalSchema } from './schema';
+
 import { encode, parseJsonSchema } from './schema-file';
 import { LeanCloudClient } from './leancloud-client';
-import { Diff } from './diff';
+import { ClassSchema } from './loose-schema';
+import { difference } from './difference';
 
 program
   .option('--console <string>', 'leancloud console url')
@@ -66,16 +67,16 @@ async function pull(classNames: string[], options: any) {
     classNames = classList.map((item) => item.name);
   }
 
-  const localSchemas: LocalSchema[] = [];
+  const classSchemas: ClassSchema[] = [];
 
   for (const className of classNames) {
     try {
-      const localSchema = await lcClient.getClassInfo(className);
-      localSchemas.push(localSchema);
+      const localSchema = await lcClient.getClassSchema(className);
+      classSchemas.push(localSchema);
     } catch (e) {
       const message = `Fetch class ${className} failed`;
       if (axios.isAxiosError(e)) {
-        console.error(message, e.response?.data);
+        console.error(message, e.response?.data?.error);
       } else {
         console.error(message, e);
       }
@@ -83,13 +84,10 @@ async function pull(classNames: string[], options: any) {
     }
   }
 
-  for (const localSchema of localSchemas) {
-    const json = await encode(localSchema);
+  for (const schema of classSchemas) {
+    const json = await encode(schema);
     const content = JSON.stringify(json, null, '  ');
-    const filePath = path.resolve(
-      options.dir,
-      `${localSchema.classSchema.name}.json`
-    );
+    const filePath = path.resolve(options.dir, `${schema.name}.json`);
     await fs.writeFile(filePath, content);
   }
 }
@@ -97,7 +95,7 @@ async function pull(classNames: string[], options: any) {
 async function push(schemaFiles: string[], options: any) {
   const { consoleUrl, appId, accessToken } = getProgramOptions();
 
-  const paths = await glob(schemaFiles, {
+  let paths = await glob(schemaFiles, {
     nodir: true,
     withFileTypes: true,
   });
@@ -107,7 +105,16 @@ async function push(schemaFiles: string[], options: any) {
     process.exit(1);
   }
 
-  const schemas: LocalSchema[] = [];
+  paths = paths.filter((path) => {
+    const isInternalClass = path.name.startsWith('_');
+    if (isInternalClass) {
+      console.error(`${path.fullpath()}: internal class not supported yet`);
+      return false;
+    }
+    return true;
+  });
+
+  const schemas: ClassSchema[] = [];
   for (const path of paths) {
     const content = await fs.readFile(path.fullpath(), 'utf-8');
     try {
@@ -119,13 +126,13 @@ async function push(schemaFiles: string[], options: any) {
       process.exit(1);
     }
   }
-  schemas.sort((a, b) => (a.classSchema.name > b.classSchema.name ? 1 : -1));
+
+  schemas.sort((a, b) => (a.name > b.name ? 1 : -1));
 
   const httpClient = createHttpClient(consoleUrl, accessToken);
   const lcClient = new LeanCloudClient(httpClient, appId);
-  const diff = new Diff(lcClient, schemas);
 
-  const { tasks, conflicts } = await diff.do();
+  const { tasks, conflicts } = await difference(lcClient, schemas);
 
   if (conflicts.length) {
     console.error('has conflicts:');

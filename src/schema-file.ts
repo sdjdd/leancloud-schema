@@ -1,12 +1,6 @@
 import _ from 'lodash';
 import { z } from 'zod';
-import {
-  BasicColumn,
-  Column,
-  LocalSchema,
-  NumberColumn,
-  PointerColumn,
-} from './schema';
+import { ClassSchema } from './loose-schema';
 
 const zodACL = z.record(
   z.union([
@@ -107,7 +101,7 @@ const zodAnyColumn = zodBasicColumn.extend({
 
 const zodACLColumn = zodBasicColumn.extend({
   type: z.literal('ACL'),
-  default: zodACL,
+  default: zodACL.optional(),
 });
 
 const zodColumn = z.discriminatedUnion('type', [
@@ -161,85 +155,60 @@ const zodJsonSchema = z.object({
 
 export function parseJsonSchema(rawJson: any, className: string) {
   const json = zodJsonSchema.parse(rawJson);
-  const localSchema: LocalSchema = {
-    classSchema: {
-      name: json.name || className,
-      type: json.type,
-      permissions: json.permissions,
-    },
-    columns: {},
+  const localSchema: ClassSchema = {
+    name: json.name || className,
+    type: json.type,
+    schema: {},
+    permissions: json.permissions,
   };
 
   Object.entries(json.schema).forEach(([name, jsonSchema]) => {
-    localSchema.columns[name] = convertZodColumnSchema(jsonSchema, name);
+    localSchema.schema[name] = {
+      name,
+      ...jsonSchema,
+    };
   });
 
   return localSchema;
 }
 
-export async function encode(schema: LocalSchema) {
+export async function encode(schema: ClassSchema) {
   const result: any = {
-    type: schema.classSchema.type,
+    type: schema.type === 'normal' ? undefined : schema.type,
     schema: {},
-    permissions: schema.classSchema.permissions,
+    permissions: sortObjectKeys(schema.permissions),
   };
 
-  if (result.type === 'normal') {
-    delete result.type;
-  }
+  const { objectId, ACL, createdAt, updatedAt, ...columns } = schema.schema;
+  const sortedColumns = Object.values(columns).sort((a, b) => {
+    return a.name > b.name ? 1 : -1;
+  });
 
-  const setColumn = (col: Column) => {
-    const json: any = {
-      type: col.type,
-      hidden: col.hidden || undefined,
-      read_only: col.readonly || undefined,
-      required: col.required || undefined,
-      comment: col.comment || undefined,
-      default: col.default,
+  [objectId, ACL, ...sortedColumns, createdAt, updatedAt].forEach((schema) => {
+    result.schema[schema.name] = {
+      type: schema.type,
+      hidden: schema.hidden || undefined,
+      read_only: schema.read_only || undefined,
+      required: schema.required || undefined,
+      comment: schema.comment || undefined,
+      default: schema.default,
+      auto_increment: schema.auto_increment || undefined,
+      className: schema.className || undefined,
+      user_private: schema.user_private || undefined,
     };
-    if (col.type === 'Number') {
-      json.auto_increment = col.autoIncrement || undefined;
-    } else if (col.type === 'Pointer') {
-      json.className = col.className;
-    }
-    result.schema[col.name] = json;
-  };
-
-  const { objectId, ACL, createdAt, updatedAt, ...columns } = schema.columns;
-
-  setColumn(objectId);
-  setColumn(ACL);
-  Object.values(columns)
-    .sort((a, b) => (a.name > b.name ? 1 : -1))
-    .forEach(setColumn);
-  setColumn(createdAt);
-  setColumn(updatedAt);
+  });
 
   return result;
 }
 
-function convertZodColumnSchema(
-  zodData: z.infer<typeof zodColumn>,
-  name: string
-): Column {
-  const column: BasicColumn = {
-    name,
-    type: zodData.type,
-    hidden: zodData.hidden,
-    readonly: zodData.read_only,
-    required: zodData.required,
-    comment: zodData.comment,
-    default: zodData.default,
-  };
-
-  switch (zodData.type) {
-    case 'Number':
-      (column as NumberColumn).autoIncrement = zodData.auto_increment;
-      break;
-    case 'Pointer':
-      (column as PointerColumn).className = zodData.className;
-      break;
-  }
-
-  return column as Column;
+function sortObjectKeys(
+  obj: Record<string, any>,
+  cmpFn?: (a: string, b: string) => number
+) {
+  return Object.keys(obj)
+    .sort(cmpFn)
+    .reduce<typeof obj>((newObj, key) => {
+      newObj[key] = obj[key];
+      return newObj;
+    }, {});
 }
