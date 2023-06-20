@@ -5,7 +5,7 @@ import { glob } from 'glob';
 import axios from 'axios';
 import 'dotenv/config';
 import { LocalSchema } from './schema';
-import { encode, parseJsonSchema } from './json-schema';
+import { encode, parseJsonSchema } from './schema-file';
 import { LeanCloudClient } from './leancloud-client';
 import { Diff } from './diff';
 
