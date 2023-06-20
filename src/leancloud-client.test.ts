@@ -82,7 +82,7 @@ test('getClassInfo', async () => {
       },
     },
   });
-  const { classSchema, columnSchemas } = await LC.getClassInfo('Test');
+  const { classSchema, columns } = await LC.getClassInfo('Test');
   expect(httpGet).toBeCalledWith(`/1.1/data/${LC.appId}/classes/Test`);
   expect(classSchema).toStrictEqual({
     name: 'Test',
@@ -96,7 +96,7 @@ test('getClassInfo', async () => {
       get: { '*': true },
     },
   });
-  expect(columnSchemas).toEqual({
+  expect(columns).toEqual({
     objectId: {
       name: 'objectId',
       type: 'String',

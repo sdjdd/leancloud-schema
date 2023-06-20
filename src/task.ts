@@ -3,7 +3,7 @@ import {
   LeanCloudClient,
   UpdateColumnData,
 } from './leancloud-client';
-import { ACL, ClassSchema, ColumnSchema } from './schema';
+import { ACL, ClassSchema, Column } from './schema';
 
 export type Task =
   | CreateClassTask
@@ -37,47 +37,44 @@ export class CreateClassTask {
 }
 
 export class CreateColumnTask {
-  constructor(
-    readonly className: string,
-    readonly columnSchema: ColumnSchema
-  ) {}
+  constructor(readonly className: string, readonly column: Column) {}
 
   describe() {
     return {
       task: 'Create Column',
       className: this.className,
-      columnSchema: this.columnSchema,
+      column: this.column,
     };
   }
 
   async run(lcClient: LeanCloudClient) {
-    const { className, columnSchema } = this;
+    const { className, column } = this;
 
     const data: CreateColumnData = {
-      name: columnSchema.name,
-      type: columnSchema.type,
-      hidden: columnSchema.hidden,
-      readonly: columnSchema.readonly,
-      required: columnSchema.required,
-      comment: columnSchema.comment,
+      name: column.name,
+      type: column.type,
+      hidden: column.hidden,
+      readonly: column.readonly,
+      required: column.required,
+      comment: column.comment,
     };
 
-    switch (columnSchema.type) {
+    switch (column.type) {
       case 'Number':
-        if (columnSchema.autoIncrement) {
-          data.autoIncrement = columnSchema.autoIncrement;
+        if (column.autoIncrement) {
+          data.autoIncrement = column.autoIncrement;
         }
         break;
       case 'Pointer':
-        data.className = columnSchema.className;
+        data.className = column.className;
         break;
     }
 
-    if (columnSchema.default) {
-      if (columnSchema.type === 'Date') {
-        data.default = columnSchema.default.iso;
+    if (column.default) {
+      if (column.type === 'Date') {
+        data.default = column.default.iso;
       } else {
-        data.default = JSON.stringify(columnSchema.default);
+        data.default = JSON.stringify(column.default);
       }
     }
 
@@ -121,10 +118,7 @@ export class UpdateDefaultACLTask {
 }
 
 export class UpdateColumnTask {
-  constructor(
-    readonly className: string,
-    readonly columnSchema: ColumnSchema
-  ) {}
+  constructor(readonly className: string, readonly columnSchema: Column) {}
 
   describe() {
     return {

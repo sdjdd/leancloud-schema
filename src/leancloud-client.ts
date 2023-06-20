@@ -2,11 +2,11 @@ import _ from 'lodash';
 import { AxiosInstance } from 'axios';
 import {
   ACL,
-  BasicColumnSchema,
+  BasicColumn,
   ClassSchema,
-  ColumnSchema,
-  NumberColumnSchema,
-  PointerColumnSchema,
+  Column,
+  NumberColumn,
+  PointerColumn,
 } from './schema';
 
 export interface ClassListItem {
@@ -23,7 +23,7 @@ export interface CreateClassData {
 
 export interface CreateColumnData {
   name: string;
-  type: ColumnSchema['type'];
+  type: Column['type'];
   hidden: boolean;
   readonly: boolean;
   required: boolean;
@@ -85,10 +85,10 @@ export class LeanCloudClient {
       permissions: data.permissions,
     };
 
-    const columnSchemas = _.mapValues<typeof data.schema, ColumnSchema>(
+    const columns = _.mapValues<typeof data.schema, Column>(
       data.schema,
       (schema, name) => {
-        const columnSchema: BasicColumnSchema = {
+        const column: BasicColumn = {
           name,
           type: schema.type,
           hidden: schema.hidden || false,
@@ -99,22 +99,22 @@ export class LeanCloudClient {
         };
 
         if (schema.type === 'Number') {
-          (columnSchema as NumberColumnSchema).autoIncrement =
+          (column as NumberColumn).autoIncrement =
             schema.auto_increment || false;
         }
         if (schema.type === 'Pointer') {
-          (columnSchema as PointerColumnSchema).className = schema.className!;
+          (column as PointerColumn).className = schema.className!;
         }
 
-        return columnSchema as ColumnSchema;
+        return column as Column;
       }
     );
 
-    if (columnSchemas.ACL && !columnSchemas.ACL.default && data.at) {
-      columnSchemas.ACL.default = data.at;
+    if (columns.ACL && !columns.ACL.default && data.at) {
+      columns.ACL.default = data.at;
     }
 
-    return { classSchema, columnSchemas };
+    return { classSchema, columns };
   }
 
   async createClass(data: CreateClassData) {

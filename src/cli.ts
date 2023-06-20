@@ -69,8 +69,18 @@ async function pull(classNames: string[], options: any) {
   const localSchemas: LocalSchema[] = [];
 
   for (const className of classNames) {
-    const localSchema = await lcClient.getClassInfo(className);
-    localSchemas.push(localSchema);
+    try {
+      const localSchema = await lcClient.getClassInfo(className);
+      localSchemas.push(localSchema);
+    } catch (e) {
+      const message = `Fetch class ${className} failed`;
+      if (axios.isAxiosError(e)) {
+        console.error(message, e.response?.data);
+      } else {
+        console.error(message, e);
+      }
+      process.exit(1);
+    }
   }
 
   for (const localSchema of localSchemas) {

@@ -1,6 +1,12 @@
 import _ from 'lodash';
 import { z } from 'zod';
-import { BasicColumnSchema, ColumnSchema, LocalSchema } from './schema';
+import {
+  BasicColumn,
+  Column,
+  LocalSchema,
+  NumberColumn,
+  PointerColumn,
+} from './schema';
 
 const zodACL = z.record(
   z.union([
@@ -161,57 +167,53 @@ export function parseJsonSchema(rawJson: any, className: string) {
       type: json.type,
       permissions: json.permissions,
     },
-    columnSchemas: {},
+    columns: {},
   };
 
   Object.entries(json.schema).forEach(([name, jsonSchema]) => {
-    localSchema.columnSchemas[name] = convertZodColumnSchema(jsonSchema, name);
+    localSchema.columns[name] = convertZodColumnSchema(jsonSchema, name);
   });
 
   return localSchema;
 }
 
 export async function encode(schema: LocalSchema) {
-  const result = {
+  const result: any = {
     type: schema.classSchema.type,
-    schema: {} as any,
-    permissions: {} as any,
+    schema: {},
+    permissions: schema.classSchema.permissions,
   };
 
-  const setSchema = (schema: ColumnSchema) => {
+  if (result.type === 'normal') {
+    delete result.type;
+  }
+
+  const setColumn = (col: Column) => {
     const json: any = {
-      type: schema.type,
-      hidden: schema.hidden || undefined,
-      read_only: schema.readonly || undefined,
-      comment: schema.comment || undefined,
-      default: schema.default,
+      type: col.type,
+      hidden: col.hidden || undefined,
+      read_only: col.readonly || undefined,
+      required: col.required || undefined,
+      comment: col.comment || undefined,
+      default: col.default,
     };
-    if (schema.type === 'Number') {
-      json.auto_increment = schema.autoIncrement || undefined;
-    } else if (schema.type === 'Pointer') {
-      json.className = schema.className;
+    if (col.type === 'Number') {
+      json.auto_increment = col.autoIncrement || undefined;
+    } else if (col.type === 'Pointer') {
+      json.className = col.className;
     }
-    result.schema[schema.name] = json;
+    result.schema[col.name] = json;
   };
 
-  const { objectId, ACL, createdAt, updatedAt, ...columnSchemas } =
-    schema.columnSchemas;
+  const { objectId, ACL, createdAt, updatedAt, ...columns } = schema.columns;
 
-  const columns = Object.values(columnSchemas).sort((a, b) =>
-    a.name > b.name ? 1 : -1
-  );
-
-  setSchema(objectId);
-  setSchema(ACL);
-  columns.forEach(setSchema);
-  setSchema(createdAt);
-  setSchema(updatedAt);
-
-  (
-    ['add_fields', 'create', 'delete', 'update', 'find', 'get'] as const
-  ).forEach((action) => {
-    result.permissions[action] = schema.classSchema.permissions[action];
-  });
+  setColumn(objectId);
+  setColumn(ACL);
+  Object.values(columns)
+    .sort((a, b) => (a.name > b.name ? 1 : -1))
+    .forEach(setColumn);
+  setColumn(createdAt);
+  setColumn(updatedAt);
 
   return result;
 }
@@ -219,8 +221,8 @@ export async function encode(schema: LocalSchema) {
 function convertZodColumnSchema(
   zodData: z.infer<typeof zodColumn>,
   name: string
-): ColumnSchema {
-  const basicColumnSchema: BasicColumnSchema = {
+): Column {
+  const column: BasicColumn = {
     name,
     type: zodData.type,
     hidden: zodData.hidden,
@@ -232,21 +234,12 @@ function convertZodColumnSchema(
 
   switch (zodData.type) {
     case 'Number':
-      return {
-        ...basicColumnSchema,
-        type: zodData.type,
-        autoIncrement: zodData.auto_increment,
-      };
+      (column as NumberColumn).autoIncrement = zodData.auto_increment;
+      break;
     case 'Pointer':
-      return {
-        ...basicColumnSchema,
-        type: zodData.type,
-        className: zodData.className,
-      };
-    default:
-      return {
-        ...basicColumnSchema,
-        type: zodData.type,
-      };
+      (column as PointerColumn).className = zodData.className;
+      break;
   }
+
+  return column as Column;
 }

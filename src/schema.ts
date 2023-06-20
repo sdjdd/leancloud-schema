@@ -1,6 +1,6 @@
 export interface LocalSchema {
   classSchema: ClassSchema;
-  columnSchemas: Record<string, ColumnSchema>;
+  columns: Record<string, Column>;
 }
 
 export interface ClassSchema {
@@ -24,7 +24,7 @@ type Permission =
       users: string[];
     };
 
-export interface BasicColumnSchema<T extends string = string, U = any> {
+export interface BasicColumn<T extends string = string, U = any> {
   name: string;
   type: T;
   hidden: boolean;
@@ -34,28 +34,27 @@ export interface BasicColumnSchema<T extends string = string, U = any> {
   default?: U;
 }
 
-export interface NumberColumnSchema
-  extends BasicColumnSchema<'Number', number> {
+export interface NumberColumn extends BasicColumn<'Number', number> {
   autoIncrement: boolean;
 }
 
-export interface PointerColumnSchema<T extends string = string>
-  extends BasicColumnSchema<'Pointer', Pointer<T>> {
+export interface PointerColumn<T extends string = string>
+  extends BasicColumn<'Pointer', Pointer<T>> {
   className: T;
 }
 
-export type ColumnSchema =
-  | BasicColumnSchema<'String', string>
-  | NumberColumnSchema
-  | BasicColumnSchema<'Boolean', boolean>
-  | BasicColumnSchema<'Date', LCDate>
-  | BasicColumnSchema<'File', Pointer<'_File'>>
-  | BasicColumnSchema<'Array', any[]>
-  | BasicColumnSchema<'Object', Record<string, any>>
-  | BasicColumnSchema<'GeoPoint', GeoPoint>
-  | PointerColumnSchema
-  | BasicColumnSchema<'Any', any>
-  | BasicColumnSchema<'ACL', ACL>;
+export type Column =
+  | BasicColumn<'String', string>
+  | NumberColumn
+  | BasicColumn<'Boolean', boolean>
+  | BasicColumn<'Date', LCDate>
+  | BasicColumn<'File', Pointer<'_File'>>
+  | BasicColumn<'Array', any[]>
+  | BasicColumn<'Object', Record<string, any>>
+  | BasicColumn<'GeoPoint', GeoPoint>
+  | PointerColumn
+  | BasicColumn<'Any', any>
+  | BasicColumn<'ACL', ACL>;
 
 interface LCDate {
   __type: 'Date';
