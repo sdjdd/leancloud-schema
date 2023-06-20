@@ -1,5 +1,3 @@
-import { ClassSchema, ColumnSchema } from './schema';
-
 export type Conflict =
   | ClassTypeConflict
   | ColumnTypeConflict
@@ -9,16 +7,16 @@ export type Conflict =
 export interface ClassTypeConflict {
   type: 'ClassTypeConflict';
   className: string;
-  localType: ClassSchema['type'];
-  remoteType: ClassSchema['type'];
+  localType: string;
+  remoteType: string;
 }
 
 export interface ColumnTypeConflict {
   type: 'ColumnTypeConflict';
   className: string;
   column: string;
-  localType: ColumnSchema['type'];
-  remoteType: ColumnSchema['type'];
+  localType: string;
+  remoteType: string;
 }
 
 export interface NumberColumnAutoIncrementConflict {
