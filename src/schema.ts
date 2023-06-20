@@ -24,86 +24,38 @@ type Permission =
       users: string[];
     };
 
-export interface BasicColumnSchema {
+export interface BasicColumnSchema<T extends string = string, U = any> {
   name: string;
-  type: string;
+  type: T;
   hidden: boolean;
   readonly: boolean;
   required: boolean;
   comment: string;
-  default?: any;
+  default?: U;
 }
 
-interface StringColumnSchema extends BasicColumnSchema {
-  type: 'String';
-  default?: string;
-}
-
-interface NumberColumnSchema extends BasicColumnSchema {
-  type: 'Number';
-  default?: number;
+export interface NumberColumnSchema
+  extends BasicColumnSchema<'Number', number> {
   autoIncrement: boolean;
 }
 
-interface BooleanColumnSchema extends BasicColumnSchema {
-  type: 'Boolean';
-  default?: boolean;
-}
-
-interface DateColumnSchema extends BasicColumnSchema {
-  type: 'Date';
-  default?: LCDate;
-}
-
-interface FileColumnSchema extends BasicColumnSchema {
-  type: 'File';
-  default?: Pointer<'_File'>;
-}
-
-interface ArrayColumnSchema extends BasicColumnSchema {
-  type: 'Array';
-  default?: any[];
-}
-
-interface ObjectColumnSchema extends BasicColumnSchema {
-  type: 'Object';
-  default?: Record<string, any>;
-}
-
-interface GeoPointColumnSchema extends BasicColumnSchema {
-  type: 'GeoPoint';
-  default?: GeoPoint;
-}
-
-interface PointerColumnSchema<T extends string = string>
-  extends BasicColumnSchema {
-  type: 'Pointer';
-  default?: Pointer<T>;
+export interface PointerColumnSchema<T extends string = string>
+  extends BasicColumnSchema<'Pointer', Pointer<T>> {
   className: T;
 }
 
-interface AnyColumnSchema extends BasicColumnSchema {
-  type: 'Any';
-  default?: any;
-}
-
-interface ACLColumnSchema extends BasicColumnSchema {
-  type: 'ACL';
-  defalut?: ACL;
-}
-
 export type ColumnSchema =
-  | StringColumnSchema
+  | BasicColumnSchema<'String', string>
   | NumberColumnSchema
-  | BooleanColumnSchema
-  | DateColumnSchema
-  | FileColumnSchema
-  | ArrayColumnSchema
-  | ObjectColumnSchema
-  | GeoPointColumnSchema
+  | BasicColumnSchema<'Boolean', boolean>
+  | BasicColumnSchema<'Date', LCDate>
+  | BasicColumnSchema<'File', Pointer<'_File'>>
+  | BasicColumnSchema<'Array', any[]>
+  | BasicColumnSchema<'Object', Record<string, any>>
+  | BasicColumnSchema<'GeoPoint', GeoPoint>
   | PointerColumnSchema
-  | AnyColumnSchema
-  | ACLColumnSchema;
+  | BasicColumnSchema<'Any', any>
+  | BasicColumnSchema<'ACL', ACL>;
 
 interface LCDate {
   __type: 'Date';

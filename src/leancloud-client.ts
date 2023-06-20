@@ -1,6 +1,13 @@
 import _ from 'lodash';
 import { AxiosInstance } from 'axios';
-import { ACL, BasicColumnSchema, ClassSchema, ColumnSchema } from './schema';
+import {
+  ACL,
+  BasicColumnSchema,
+  ClassSchema,
+  ColumnSchema,
+  NumberColumnSchema,
+  PointerColumnSchema,
+} from './schema';
 
 export interface ClassListItem {
   name: string;
@@ -15,7 +22,6 @@ export interface CreateClassData {
 }
 
 export interface CreateColumnData {
-  className: string;
   name: string;
   type: ColumnSchema['type'];
   hidden: boolean;
@@ -24,20 +30,15 @@ export interface CreateColumnData {
   default?: string; // JSON
   comment?: string;
   autoIncrement?: boolean; // Number
-  incrementValue?: number; // Number
-  pointerClass?: string; // Pointer
+  className?: string; // Pointer
 }
 
 export interface UpdateColumnData {
-  className: string;
-  name: string;
   hidden: boolean;
   readonly: boolean;
   required: boolean;
   default?: string | null; // JSON string
   comment?: string;
-  autoIncrement?: boolean; // Number
-  incrementValue?: number; // Number
 }
 
 export class LeanCloudClient {
@@ -66,7 +67,7 @@ export class LeanCloudClient {
       schema: Record<
         string,
         {
-          type: ColumnSchema['type'];
+          type: string;
           hidden?: boolean;
           read_only?: boolean;
           required?: boolean;
@@ -87,7 +88,7 @@ export class LeanCloudClient {
     const columnSchemas = _.mapValues<typeof data.schema, ColumnSchema>(
       data.schema,
       (schema, name) => {
-        const basicColumnSchema: BasicColumnSchema = {
+        const columnSchema: BasicColumnSchema = {
           name,
           type: schema.type,
           hidden: schema.hidden || false,
@@ -96,25 +97,16 @@ export class LeanCloudClient {
           default: schema.default,
           comment: schema.comment || '',
         };
-        switch (schema.type) {
-          case 'Number':
-            return {
-              ...basicColumnSchema,
-              type: schema.type,
-              autoIncrement: schema.auto_increment || false,
-            };
-          case 'Pointer':
-            return {
-              ...basicColumnSchema,
-              type: schema.type,
-              className: schema.className!,
-            };
-          default:
-            return {
-              ...basicColumnSchema,
-              type: schema.type,
-            };
+
+        if (schema.type === 'Number') {
+          (columnSchema as NumberColumnSchema).autoIncrement =
+            schema.auto_increment || false;
         }
+        if (schema.type === 'Pointer') {
+          (columnSchema as PointerColumnSchema).className = schema.className!;
+        }
+
+        return columnSchema as ColumnSchema;
       }
     );
 
@@ -157,37 +149,36 @@ export class LeanCloudClient {
     );
   }
 
-  async createColumn(data: CreateColumnData) {
-    await this.client.post(
-      `/1.1/data/${this.appId}/classes/${data.className}/columns`,
-      {
-        claid: data.className,
-        column: data.name,
-        type: data.type,
-        hidden: data.hidden,
-        read_only: data.readonly,
-        required: data.required,
-        default: data.default,
-        comment: data.comment,
-        auto_increment: data.autoIncrement,
-        increment_value: data.incrementValue,
-        class_name: data.pointerClass,
-      }
-    );
+  async createColumn(className: string, data: CreateColumnData) {
+    await this.client.post(`/1.1/data/${this.appId}/classes/${data}/columns`, {
+      claid: className,
+      column: data.name,
+      type: data.type,
+      hidden: data.hidden,
+      read_only: data.readonly,
+      required: data.required,
+      default: data.default,
+      comment: data.comment,
+      auto_increment: data.autoIncrement,
+      incrementValue: data.autoIncrement ? 1 : undefined,
+      class_name: data.className,
+    });
   }
 
-  async updateColumn(data: UpdateColumnData) {
+  async updateColumn(
+    className: string,
+    column: string,
+    data: UpdateColumnData
+  ) {
     await this.client.put(
-      `/1.1/data/${this.appId}/classes/${data.className}/columns/${data.name}`,
+      `/1.1/data/${this.appId}/classes/${className}/columns/${column}`,
       {
-        claid: data.className,
+        claid: className,
         hidden: data.hidden,
         read_only: data.readonly,
         required: data.required,
         default: data.default,
         comment: data.comment,
-        auto_increment: data.autoIncrement,
-        increment_value: data.incrementValue,
       }
     );
   }

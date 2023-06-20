@@ -87,10 +87,6 @@ test('getClassInfo', async () => {
   expect(classSchema).toStrictEqual({
     name: 'Test',
     type: 'normal',
-    defaultACL: {
-      '*': { read: true },
-      _owner: { write: true },
-    },
     permissions: {
       add_fields: { roles: [], users: [] },
       create: { onlySignInUsers: true },
@@ -230,8 +226,7 @@ test('updateClassDefaultACL', async () => {
 
 test('createColumn', async () => {
   const httpPost = jest.spyOn(http, 'post').mockResolvedValue({});
-  await LC.createColumn({
-    className: 'Test',
+  await LC.createColumn('Test', {
     name: 'deletedAt',
     type: 'Date',
     hidden: true,
@@ -255,16 +250,14 @@ test('createColumn', async () => {
 
 test('updateColumn', async () => {
   const httpPut = jest.spyOn(http, 'put').mockResolvedValue({});
-  await LC.updateColumn({
-    className: 'Test',
-    name: 'NAME',
+  await LC.updateColumn('Test', 'COLUMN', {
     hidden: true,
     readonly: true,
     required: true,
     comment: 'COMMENT',
   });
   expect(httpPut).toBeCalledWith(
-    `/1.1/data/${LC.appId}/classes/Test/columns/NAME`,
+    `/1.1/data/${LC.appId}/classes/Test/columns/COLUMN`,
     {
       claid: 'Test',
       hidden: true,

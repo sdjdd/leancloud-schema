@@ -54,7 +54,6 @@ export class CreateColumnTask {
     const { className, columnSchema } = this;
 
     const data: CreateColumnData = {
-      className,
       name: columnSchema.name,
       type: columnSchema.type,
       hidden: columnSchema.hidden,
@@ -67,11 +66,10 @@ export class CreateColumnTask {
       case 'Number':
         if (columnSchema.autoIncrement) {
           data.autoIncrement = columnSchema.autoIncrement;
-          data.incrementValue = 1;
         }
         break;
       case 'Pointer':
-        data.pointerClass = columnSchema.className;
+        data.className = columnSchema.className;
         break;
     }
 
@@ -83,7 +81,7 @@ export class CreateColumnTask {
       }
     }
 
-    await lcClient.createColumn(data);
+    await lcClient.createColumn(className, data);
   }
 }
 
@@ -140,8 +138,6 @@ export class UpdateColumnTask {
     const { columnSchema } = this;
 
     const data: UpdateColumnData = {
-      className: this.className,
-      name: this.columnSchema.name,
       hidden: this.columnSchema.hidden,
       readonly: this.columnSchema.readonly,
       required: this.columnSchema.required,
@@ -160,6 +156,6 @@ export class UpdateColumnTask {
       data.default = null;
     }
 
-    await lcClient.updateColumn(data);
+    await lcClient.updateColumn(this.className, columnSchema.name, data);
   }
 }
