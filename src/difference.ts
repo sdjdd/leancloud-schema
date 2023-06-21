@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import { Conflict } from './conflict';
 import { LeanCloudClient } from './leancloud-client';
-import { ClassSchema, ColumnSchema } from './loose-schema';
+import { ClassSchema, ColumnSchema } from './schema';
 import { ACL } from './type';
 
 const AUTO_CREATE_COLUMNS = ['objectId', 'ACL', 'createdAt', 'updatedAt'];

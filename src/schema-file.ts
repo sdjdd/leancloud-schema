@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import { z } from 'zod';
-import { ClassSchema, ColumnSchema } from './loose-schema';
+import { ClassSchema, ColumnSchema } from './schema';
 
 const zodACL = z.record(
   z.union([

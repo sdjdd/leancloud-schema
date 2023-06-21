@@ -9,7 +9,7 @@ import 'dotenv/config';
 
 import { format, parseJsonSchema } from './schema-file';
 import { LeanCloudClient } from './leancloud-client';
-import { ClassSchema } from './loose-schema';
+import { ClassSchema } from './schema';
 import { difference } from './difference';
 import { createTask } from './task';
 

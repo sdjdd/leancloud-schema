@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import { AxiosInstance } from 'axios';
-import { ClassSchema, ColumnSchema, Permission } from './loose-schema';
+import { ClassSchema, ColumnSchema, Permission } from './schema';
 import { ACL } from './type';
 
 export interface ClassListItem {
