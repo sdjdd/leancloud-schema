@@ -5,7 +5,7 @@ import { glob } from 'glob';
 import axios from 'axios';
 import 'dotenv/config';
 
-import { encode, parseJsonSchema } from './schema-file';
+import { format, parseJsonSchema } from './schema-file';
 import { LeanCloudClient } from './leancloud-client';
 import { ClassSchema } from './loose-schema';
 import { difference } from './difference';
@@ -85,7 +85,7 @@ async function pull(classNames: string[], options: any) {
   }
 
   for (const schema of classSchemas) {
-    const json = await encode(schema);
+    const json = await format(schema);
     const content = JSON.stringify(json, null, '  ');
     const filePath = path.resolve(options.dir, `${schema.name}.json`);
     await fs.writeFile(filePath, content);

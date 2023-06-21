@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import { z } from 'zod';
-import { ClassSchema } from './loose-schema';
+import { ClassSchema, ColumnSchema } from './loose-schema';
 
 const zodACL = z.record(
   z.union([
@@ -173,21 +173,37 @@ export function parseJsonSchema(rawJson: any, className: string) {
   return localSchema;
 }
 
-export async function encode(schema: ClassSchema) {
-  const result: any = {
-    type: schema.type === 'normal' ? undefined : schema.type,
+interface JsonSchema {
+  type?: ClassSchema['type'];
+  schema: {
+    [name: string]: Omit<ColumnSchema, 'name'>;
+  };
+  permissions: ClassSchema['permissions'];
+  indexes: ClassSchema['indexes'];
+}
+
+export async function format(schema: ClassSchema) {
+  const output: JsonSchema = {
+    type: schema.type,
     schema: {},
     permissions: sortObjectKeys(schema.permissions),
-    indexes: _.sortBy(schema.indexes, (index) => index.name),
+    indexes: _.sortBy(schema.indexes, (index) => index.name).map((index) => ({
+      name: index.name,
+      key: index.key,
+      unique: index.unique || undefined,
+      sparse: index.sparse || undefined,
+    })),
   };
 
+  if (output.type === 'normal') {
+    delete output.type;
+  }
+
   const { objectId, ACL, createdAt, updatedAt, ...columns } = schema.schema;
-  const sortedColumns = Object.values(columns).sort((a, b) => {
-    return a.name > b.name ? 1 : -1;
-  });
+  const sortedColumns = _.sortBy(Object.values(columns), (col) => col.name);
 
   [objectId, ACL, ...sortedColumns, createdAt, updatedAt].forEach((schema) => {
-    result.schema[schema.name] = {
+    output.schema[schema.name] = {
       type: schema.type,
       hidden: schema.hidden || undefined,
       read_only: schema.read_only || undefined,
@@ -200,7 +216,7 @@ export async function encode(schema: ClassSchema) {
     };
   });
 
-  return result;
+  return output;
 }
 
 function sortObjectKeys(
