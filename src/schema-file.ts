@@ -191,7 +191,7 @@ interface JsonSchema {
   indexes: ClassSchema['indexes'];
 }
 
-export async function format(schema: ClassSchema) {
+export function format(schema: ClassSchema) {
   const output: JsonSchema = {
     type: schema.type,
     schema: {},

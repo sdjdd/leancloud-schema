@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import fs from 'node:fs/promises';
+import fs from 'node:fs';
+import pfs from 'node:fs/promises';
 import path from 'node:path';
 import { program } from 'commander';
 import { glob } from 'glob';
@@ -61,6 +62,7 @@ function getProgramOptions(): ProgramOptions {
 
 async function pull(classNames: string[], options: any) {
   const { consoleUrl, appId, accessToken } = getProgramOptions();
+  const dir = options.dir;
 
   const httpClient = createHttpClient(consoleUrl, accessToken);
   const lcClient = new LeanCloudClient(httpClient, appId);
@@ -87,11 +89,13 @@ async function pull(classNames: string[], options: any) {
     }
   }
 
+  createDir(dir);
+
   for (const schema of classSchemas) {
-    const json = await format(schema);
+    const json = format(schema);
     const content = JSON.stringify(json, null, '  ');
-    const filePath = path.resolve(options.dir, `${schema.name}.json`);
-    await fs.writeFile(filePath, content);
+    const filePath = path.resolve(dir, `${schema.name}.json`);
+    await pfs.writeFile(filePath, content);
   }
 }
 
@@ -119,7 +123,7 @@ async function push(schemaFiles: string[], options: any) {
 
   const schemas: ClassSchema[] = [];
   for (const path of paths) {
-    const content = await fs.readFile(path.fullpath(), 'utf-8');
+    const content = await pfs.readFile(path.fullpath(), 'utf-8');
     try {
       const json = JSON.parse(content);
       schemas.push(parseJsonSchema(json, removeExt(path.name)));
@@ -185,4 +189,14 @@ export function createHttpClient(consoleUrl: string, accessToken: string) {
       'X-XSRF-Token': 'None',
     },
   });
+}
+
+function createDir(path: string) {
+  if (fs.existsSync(path)) {
+    if (fs.statSync(path).isFile()) {
+      exit(`${path} is file`);
+    }
+  } else {
+    fs.mkdirSync(path, { recursive: true });
+  }
 }
