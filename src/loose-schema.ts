@@ -7,6 +7,7 @@ export interface ClassSchema {
   permissions: {
     [action: string]: Permission;
   };
+  indexes: Index[];
 }
 
 export interface ColumnSchema {
@@ -27,4 +28,11 @@ export interface Permission {
   onlySignInUsers?: boolean;
   roles?: string[];
   users?: string[];
+}
+
+export interface Index {
+  name: string;
+  key: Record<string, number>;
+  unique?: boolean;
+  sparse?: boolean;
 }

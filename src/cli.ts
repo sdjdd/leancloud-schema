@@ -74,11 +74,11 @@ async function pull(classNames: string[], options: any) {
       const localSchema = await lcClient.getClassSchema(className);
       classSchemas.push(localSchema);
     } catch (e) {
-      const message = `Fetch class ${className} failed`;
-      if (axios.isAxiosError(e)) {
-        console.error(message, e.response?.data?.error);
+      console.error(`Fetch class ${className} failed.`);
+      if (axios.isAxiosError(e) && e.response?.data) {
+        console.error(e.response.data.error ?? e.response.data);
       } else {
-        console.error(message, e);
+        console.error(e);
       }
       process.exit(1);
     }

@@ -25,6 +25,19 @@ export class LeanCloudClient {
     }));
   }
 
+  async getClassIndices(name: string) {
+    const { data } = await this.client.get<{
+      results: {
+        name: string;
+        key: Record<string, number>;
+        'user_create?': boolean;
+        unique?: boolean;
+        sparse?: boolean;
+      }[];
+    }>(`/1.1/data/${this.appId}/classes/${name}/indices`);
+    return data.results;
+  }
+
   async getClassSchema(name: string) {
     const { data } = await this.client.get<{
       name: string;
@@ -48,17 +61,28 @@ export class LeanCloudClient {
       };
     }>(`/1.1/data/${this.appId}/classes/${name}`);
 
-    const schema = _.mapValues(data.schema, (s, name) => ({ ...s, name }));
+    const indexes = await this.getClassIndices(name);
 
+    const schema = _.mapValues(data.schema, (s, name) => ({ ...s, name }));
     if (schema.ACL && !schema.ACL.default && data.at) {
       schema.ACL.default = data.at;
     }
+
+    const userDefinedIndexes = indexes
+      .filter((index) => index['user_create?'])
+      .map((index) => ({
+        name: index.name,
+        key: index.key,
+        unique: index.unique,
+        sparse: index.sparse,
+      }));
 
     const classSchema: ClassSchema = {
       name: data.name,
       type: data['class-type'],
       schema: schema,
       permissions: data.permissions,
+      indexes: userDefinedIndexes,
     };
 
     return classSchema;

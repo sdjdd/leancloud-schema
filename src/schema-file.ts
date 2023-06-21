@@ -160,6 +160,7 @@ export function parseJsonSchema(rawJson: any, className: string) {
     type: json.type,
     schema: {},
     permissions: json.permissions,
+    indexes: [],
   };
 
   Object.entries(json.schema).forEach(([name, jsonSchema]) => {
@@ -177,6 +178,7 @@ export async function encode(schema: ClassSchema) {
     type: schema.type === 'normal' ? undefined : schema.type,
     schema: {},
     permissions: sortObjectKeys(schema.permissions),
+    indexes: _.sortBy(schema.indexes, (index) => index.name),
   };
 
   const { objectId, ACL, createdAt, updatedAt, ...columns } = schema.schema;
