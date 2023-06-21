@@ -79,7 +79,7 @@ async function pull(classNames: string[], options: any) {
     } catch (e) {
       console.error(`Fetch class ${className} failed.`);
       if (axios.isAxiosError(e) && e.response?.data) {
-        console.error(e.response.data.error ?? e.response.data);
+        console.error(e.response.data);
       } else {
         console.error(e);
       }
@@ -143,23 +143,21 @@ async function push(schemaFiles: string[], options: any) {
     process.exit(1);
   }
 
-  if (options.dryRun) {
-    differences.forEach((d) => console.dir(d, { depth: 5 }));
-    return;
-  }
+  for (const difference of differences) {
+    console.dir(difference, { depth: 5 });
 
-  const tasks = differences.map(createTask);
+    if (options.dryRun) {
+      continue;
+    }
 
-  for (const task of tasks) {
-    console.dir(task.describe(), { depth: 5 });
-    if (!options.dryRun) {
-      try {
-        await task.run(lcClient);
-      } catch (e) {
-        if (axios.isAxiosError(e)) {
-          console.error(e.response?.data);
-          exit('something went wrong');
-        }
+    const task = createTask(difference);
+    try {
+      await task.run(lcClient);
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        console.error(e.response?.data);
+      } else {
+        console.error(e);
       }
     }
   }
