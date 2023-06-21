@@ -18,10 +18,10 @@ const zodACL = z.record(
 );
 
 const zodBasicColumn = z.object({
-  hidden: z.boolean().default(false),
-  read_only: z.boolean().default(false),
-  required: z.boolean().default(false),
-  comment: z.string().default(''),
+  hidden: z.boolean().optional(),
+  read_only: z.boolean().optional(),
+  required: z.boolean().optional(),
+  comment: z.string().optional(),
 });
 
 const zodStringColumn = zodBasicColumn.extend({
@@ -31,7 +31,7 @@ const zodStringColumn = zodBasicColumn.extend({
 
 const zodNumberColumn = zodBasicColumn.extend({
   type: z.literal('Number'),
-  auto_increment: z.boolean().default(false),
+  auto_increment: z.boolean().optional(),
   default: z.number().optional(),
 });
 
@@ -118,24 +118,33 @@ const zodColumn = z.discriminatedUnion('type', [
   zodACLColumn,
 ]);
 
-const zodPermission = z.union([
-  z
-    .object({
-      roles: z.array(z.string()),
-      users: z.array(z.string()),
-    })
-    .strict(),
-  z
-    .object({
-      onlySignInUsers: z.literal(true),
-    })
-    .strict(),
-  z
-    .object({
-      '*': z.literal(true),
-    })
-    .strict(),
-]);
+const zodPermission = z
+  .object({
+    '*': z.literal(true).optional(),
+    onlySignInUsers: z.literal(true).optional(),
+    roles: z.array(z.string()).optional(),
+    users: z.array(z.string()).optional(),
+  })
+  .strict()
+  .refine((p) => !_.isEmpty(_.omitBy(p, _.isUndefined)), {
+    message: 'Permossion cannot be empty',
+  })
+  .transform((p) => {
+    if (p['*']) {
+      delete p.onlySignInUsers;
+      delete p.roles;
+      delete p.users;
+    }
+    if (p.onlySignInUsers) {
+      delete p.roles;
+      delete p.users;
+    }
+    if (p.roles || p.users) {
+      p.roles ??= [];
+      p.users ??= [];
+    }
+    return p;
+  });
 
 const zodJsonSchema = z.object({
   name: z.string().optional(),

@@ -40,10 +40,7 @@ test('createClass', async () => {
   await LC.createClass({
     name: 'Test',
     type: 'normal',
-    defaultACL: {
-      '*': { read: true },
-      _owner: { write: true },
-    },
+    schema: {},
     permissions: {
       add_fields: { roles: [], users: [] },
       create: { onlySignInUsers: true },
@@ -52,14 +49,11 @@ test('createClass', async () => {
       find: { '*': true },
       get: { '*': true },
     },
+    indexes: [],
   });
   expect(httpPost).toBeCalledWith(`/1.1/data/${LC.appId}/classes`, {
     class_name: 'Test',
     class_type: 'normal',
-    acl_template: {
-      '*': { read: true },
-      _owner: { write: true },
-    },
     permissions: {
       add_fields: { roles: [], users: [] },
       create: { onlySignInUsers: true },
@@ -113,11 +107,14 @@ test('updateClassDefaultACL', async () => {
 
 test('updateColumn', async () => {
   const httpPut = jest.spyOn(http, 'put').mockResolvedValue({});
-  await LC.updateColumn('Test', 'COLUMN', {
+  await LC.updateColumn('Test', {
+    name: 'COLUMN',
+    type: 'String',
     hidden: true,
-    readonly: true,
+    read_only: true,
     required: true,
     comment: 'COMMENT',
+    default: 'DEFAULT',
   });
   expect(httpPut).toBeCalledWith(
     `/1.1/data/${LC.appId}/classes/Test/columns/COLUMN`,
@@ -127,6 +124,7 @@ test('updateColumn', async () => {
       read_only: true,
       required: true,
       comment: 'COMMENT',
+      default: 'DEFAULT',
     }
   );
 });

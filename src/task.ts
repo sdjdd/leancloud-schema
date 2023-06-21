@@ -1,3 +1,4 @@
+import { Difference } from './difference';
 import { LeanCloudClient } from './leancloud-client';
 import { ClassSchema, ColumnSchema } from './loose-schema';
 import { ACL } from './type';
@@ -93,5 +94,21 @@ export class UpdateColumnTask {
 
   async run(lcClient: LeanCloudClient) {
     await lcClient.updateColumn(this.className, this.column);
+  }
+}
+
+export function createTask(difference: Difference): Task {
+  switch (difference.type) {
+    case 'MissingClass':
+      return new CreateClassTask(difference.class);
+    case 'MissingColumn':
+      return new CreateColumnTask(difference.className, difference.column);
+    case 'ClassPermissionsMismatch':
+      return new UpdateClassPermissionsTask(
+        difference.className,
+        difference.expected
+      );
+    case 'ColumnMismatch':
+      return new UpdateColumnTask(difference.className, difference.expected);
   }
 }

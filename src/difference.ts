@@ -2,30 +2,67 @@ import _ from 'lodash';
 import { Conflict } from './conflict';
 import { LeanCloudClient } from './leancloud-client';
 import { ClassSchema, ColumnSchema } from './loose-schema';
-import {
-  CreateClassTask,
-  CreateColumnTask,
-  Task,
-  UpdateColumnTask,
-} from './task';
+import { ACL } from './type';
 
 const AUTO_CREATE_COLUMNS = ['objectId', 'ACL', 'createdAt', 'updatedAt'];
+
+const DEFAULT_ACL: ACL = {
+  '*': { read: true, write: true },
+};
+
+interface MissingClass {
+  type: 'MissingClass';
+  class: ClassSchema;
+}
+
+interface MissingColumn {
+  type: 'MissingColumn';
+  className: string;
+  column: ColumnSchema;
+}
+
+interface ClassPermissionsMismatch {
+  type: 'ClassPermissionsMismatch';
+  className: string;
+  current: ClassSchema['permissions'];
+  expected: ClassSchema['permissions'];
+}
+
+interface ColumnMismatch {
+  type: 'ColumnMismatch';
+  className: string;
+  current: ColumnSchema;
+  expected: ColumnSchema;
+}
+
+export type Difference =
+  | MissingClass
+  | MissingColumn
+  | ClassPermissionsMismatch
+  | ColumnMismatch;
+
+interface DiffContext {
+  differences: Difference[];
+  conflicts: Conflict[];
+}
 
 export async function difference(
   lcClient: LeanCloudClient,
   localClasses: ClassSchema[]
 ) {
-  const tasks: Task[] = [];
-  const conflicts: Conflict[] = [];
+  const ctx: DiffContext = {
+    differences: [],
+    conflicts: [],
+  };
 
   const classList = await lcClient.getClassList();
   const existClasses: ClassSchema[] = [];
 
-  for (const localClass of localClasses) {
+  localClasses.forEach((localClass) => {
     const remoteClass = classList.find((c) => c.name === localClass.name);
     if (remoteClass) {
       if (localClass.type !== remoteClass.type) {
-        conflicts.push({
+        ctx.conflicts.push({
           type: 'ClassTypeConflict',
           className: localClass.name,
           localType: localClass.type,
@@ -35,60 +72,63 @@ export async function difference(
         existClasses.push(localClass);
       }
     } else {
-      tasks.push(new CreateClassTask(localClass));
-      Object.values(localClass.schema)
-        .sort((a, b) => (a.name > b.name ? 1 : -1))
-        .forEach((column) => {
-          if (!AUTO_CREATE_COLUMNS.includes(column.name)) {
-            tasks.push(new CreateColumnTask(localClass.name, column));
-          }
+      ctx.differences.push({ type: 'MissingClass', class: localClass });
+      Object.values(localClass.schema).forEach((column) => {
+        if (AUTO_CREATE_COLUMNS.includes(column.name)) {
+          return;
+        }
+        ctx.differences.push({
+          type: 'MissingColumn',
+          className: localClass.name,
+          column,
         });
+      });
     }
-  }
+  });
 
   for (const localClass of existClasses) {
     const remoteClass = await lcClient.getClassSchema(localClass.name);
-    checkClass(tasks, conflicts, localClass, remoteClass);
+    checkClass(ctx, localClass, remoteClass);
   }
 
-  return { tasks, conflicts };
+  return ctx;
 }
 
 function checkClass(
-  tasks: Task[],
-  conflicts: Conflict[],
+  ctx: DiffContext,
   localClass: ClassSchema,
   remoteClass: ClassSchema
 ) {
-  Object.values(localClass.schema)
-    .sort((a, b) => (a.name > b.name ? 1 : -1))
-    .forEach((localColumn) => {
-      const remoteColumn = remoteClass.schema[localColumn.name];
-      if (remoteColumn) {
-        checkColumn(
-          tasks,
-          conflicts,
-          localClass.name,
-          localColumn,
-          remoteColumn
-        );
-      } else {
-        tasks.push(new CreateColumnTask(localClass.name, localColumn));
-      }
+  if (!_.isEqual(localClass.permissions, remoteClass.permissions)) {
+    ctx.differences.push({
+      type: 'ClassPermissionsMismatch',
+      className: localClass.name,
+      current: remoteClass.permissions,
+      expected: localClass.permissions,
     });
-
-  return { tasks, conflicts };
+  }
+  Object.values(localClass.schema).forEach((localColumn) => {
+    const remoteColumn = remoteClass.schema[localColumn.name];
+    if (remoteColumn) {
+      checkColumn(ctx, localClass.name, localColumn, remoteColumn);
+    } else {
+      ctx.differences.push({
+        type: 'MissingColumn',
+        className: localClass.name,
+        column: localColumn,
+      });
+    }
+  });
 }
 
 function checkColumn(
-  tasks: Task[],
-  conflicts: Conflict[],
+  ctx: DiffContext,
   className: string,
   localColumn: ColumnSchema,
   remoteColumn: ColumnSchema
 ) {
   if (localColumn.type !== remoteColumn.type) {
-    conflicts.push({
+    ctx.conflicts.push({
       type: 'ColumnTypeConflict',
       className,
       column: localColumn.name,
@@ -100,10 +140,9 @@ function checkColumn(
 
   if (
     localColumn.type === 'Number' &&
-    (localColumn.auto_increment || false) !==
-      (remoteColumn.auto_increment || false)
+    !isEqual(localColumn.auto_increment, remoteColumn.auto_increment, false)
   ) {
-    conflicts.push({
+    ctx.conflicts.push({
       type: 'NumberColumnAutoIncrementConflict',
       className,
       column: localColumn.name,
@@ -117,7 +156,7 @@ function checkColumn(
     localColumn.type === 'Pointer' &&
     localColumn.className !== remoteColumn.className
   ) {
-    conflicts.push({
+    ctx.conflicts.push({
       type: 'PointerColumnClassNameConflict',
       className,
       column: localColumn.name,
@@ -128,37 +167,30 @@ function checkColumn(
   }
 
   if (!isColumnEqual(localColumn, remoteColumn)) {
-    tasks.push(new UpdateColumnTask(className, localColumn));
+    ctx.differences.push({
+      type: 'ColumnMismatch',
+      className,
+      current: remoteColumn,
+      expected: localColumn,
+    });
   }
 }
 
 function isColumnEqual(c1: ColumnSchema, c2: ColumnSchema) {
-  if (c1.name !== c2.name) {
-    return false;
-  }
-  if (c1.type !== c2.type) {
-    return false;
-  }
-  if ((c1.hidden || false) !== (c2.hidden || false)) {
-    return false;
-  }
-  if ((c1.read_only || false) !== (c2.read_only || false)) {
-    return false;
-  }
-  if ((c1.required || false) !== (c2.required || false)) {
-    return false;
-  }
-  if ((c1.comment || '') !== (c2.comment || '')) {
-    return false;
-  }
-  if ((c1.auto_increment || false) !== (c2.auto_increment || false)) {
-    return false;
-  }
-  if (c1.className !== c2.className) {
-    return false;
-  }
-  if ((c1.user_private || false) !== (c2.user_private || false)) {
-    return false;
-  }
-  return _.isEqual(c1.default, c2.default);
+  return (
+    c1.name === c2.name &&
+    c1.type === c2.type &&
+    isEqual(c1.hidden, c2.hidden, false) &&
+    isEqual(c1.read_only, c2.read_only, false) &&
+    isEqual(c1.required, c2.required, false) &&
+    isEqual(c1.auto_increment, c2.auto_increment, false) &&
+    isEqual(c1.comment, c2.comment, '') &&
+    isEqual(c1.user_private, c2.user_private, false) &&
+    c1.className === c2.className &&
+    _.isEqual(c1.default, c2.default)
+  );
+}
+
+function isEqual<T>(a: T | undefined, b: T | undefined, defaultValue: T) {
+  return (a ?? defaultValue) === (b ?? defaultValue);
 }

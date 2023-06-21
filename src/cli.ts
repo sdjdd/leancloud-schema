@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { program } from 'commander';
@@ -9,6 +11,7 @@ import { format, parseJsonSchema } from './schema-file';
 import { LeanCloudClient } from './leancloud-client';
 import { ClassSchema } from './loose-schema';
 import { difference } from './difference';
+import { createTask } from './task';
 
 program
   .option('--console <string>', 'leancloud console url')
@@ -107,7 +110,7 @@ async function push(schemaFiles: string[], options: any) {
 
   paths = paths.filter((path) => {
     const isInternalClass = path.name.startsWith('_');
-    if (isInternalClass) {
+    if (isInternalClass && path.name !== '_User.json') {
       console.error(`${path.fullpath()}: internal class not supported yet`);
       return false;
     }
@@ -132,13 +135,20 @@ async function push(schemaFiles: string[], options: any) {
   const httpClient = createHttpClient(consoleUrl, accessToken);
   const lcClient = new LeanCloudClient(httpClient, appId);
 
-  const { tasks, conflicts } = await difference(lcClient, schemas);
+  const { conflicts, differences } = await difference(lcClient, schemas);
 
   if (conflicts.length) {
     console.error('has conflicts:');
     conflicts.forEach((conflict) => console.log(conflict));
     process.exit(1);
   }
+
+  if (options.dryRun) {
+    differences.forEach((d) => console.dir(d, { depth: 5 }));
+    return;
+  }
+
+  const tasks = differences.map(createTask);
 
   for (const task of tasks) {
     console.dir(task.describe(), { depth: 5 });

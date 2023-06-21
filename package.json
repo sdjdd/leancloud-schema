@@ -1,9 +1,9 @@
 {
-  "name": "leancloud-storage-schema",
-  "private": true,
-  "version": "1.0.0",
+  "name": "leancloud-schema",
+  "version": "0.1.0",
   "description": "Manage LeanCloud storage class schemas.",
-  "main": "index.js",
+  "main": "dist/cli.js",
+  "bin": "dist/cli.js",
   "scripts": {
     "test": "jest",
     "typecheck": "tsc --noEmit",

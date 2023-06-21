@@ -64,9 +64,6 @@ export class LeanCloudClient {
     const indexes = await this.getClassIndices(name);
 
     const schema = _.mapValues(data.schema, (s, name) => ({ ...s, name }));
-    if (schema.ACL && !schema.ACL.default && data.at) {
-      schema.ACL.default = data.at;
-    }
 
     const userDefinedIndexes = indexes
       .filter((index) => index['user_create?'])
@@ -152,7 +149,8 @@ export class LeanCloudClient {
         required: data.required ?? false,
         comment: data.comment ?? '',
         default: defaultValue ?? null,
-        user_private: data.user_private ?? false,
+        user_private:
+          className === '_User' ? data.user_private ?? false : undefined,
       }
     );
   }
